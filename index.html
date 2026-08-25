@@ -364,6 +364,51 @@ table.sum tr.grp td{background:#f7fafd;font-weight:700}
 .modal-box p{font-size:.82rem;color:var(--muted);line-height:1.6;margin-bottom:14px}
 .modal-box .row{display:flex;gap:8px;margin-top:13px}
 
+/* ---- แถบเตือนผู้ตอบยังน้อย ---- */
+.warnbar{background:#fef6e4;border:1px solid #f3ddab;color:#8a6100;border-radius:var(--r-md);
+  padding:12px 16px;font-size:.83rem;line-height:1.6;margin-bottom:14px;display:flex;gap:10px;align-items:flex-start}
+.warnbar::before{content:"!";flex:none;width:19px;height:19px;border-radius:50%;background:#e0a020;
+  color:#fff;font:700 12px/19px Inter;text-align:center}
+
+/* ---- แถบเดี่ยว นับจำนวนคน ---- */
+.sb-list{display:flex;flex-direction:column;gap:9px}
+.sb{display:grid;grid-template-columns:minmax(120px,34%) 1fr 46px;gap:12px;align-items:center}
+.sb-name{font-size:.84rem;line-height:1.35}
+.sb-name em{display:block;font-style:normal;font-size:.68rem;color:var(--muted-2)}
+.sb>b{font:700 .9rem Inter,sans-serif;text-align:right;font-variant-numeric:tabular-nums;color:var(--ink)}
+
+/* ---- แถบคู่ ตอนนี้ / อยากได้ ---- */
+.pb-list{display:flex;flex-direction:column;gap:18px}
+.pb{display:grid;gap:6px 14px;grid-template-columns:1fr;padding-bottom:16px;border-bottom:1px solid var(--line-2)}
+.pb:last-child{border-bottom:0;padding-bottom:0}
+@media(min-width:720px){.pb{grid-template-columns:minmax(130px,30%) 1fr 150px;align-items:center}}
+.pb-name{font-size:.86rem;font-weight:600;line-height:1.35}
+.pb-name em{display:block;font-style:normal;font-size:.69rem;color:var(--muted-2);font-weight:400}
+.pb-rows{display:flex;flex-direction:column;gap:6px}
+.pb-row{display:grid;grid-template-columns:62px 1fr 34px;gap:9px;align-items:center}
+.pb-row i{font-style:normal;font-size:.7rem;font-weight:600;color:var(--muted)}
+.pb-row b{font:700 .84rem Inter,sans-serif;text-align:right;font-variant-numeric:tabular-nums}
+.pb-verdict{font-size:.79rem;font-weight:600}
+.pb-verdict .need{color:var(--warn)}
+.pb-verdict .over{color:var(--muted)}
+.pb-verdict .ok{color:var(--ok)}
+
+/* ---- รายการช่วงพัก ---- */
+.plist{display:flex;flex-direction:column;gap:11px}
+.prow{display:grid;grid-template-columns:minmax(130px,36%) 1fr 62px;gap:12px;align-items:center}
+.pname{font-size:.85rem;line-height:1.35}
+.prow>b{font:700 .88rem Inter,sans-serif;text-align:right;font-variant-numeric:tabular-nums}
+.prow>b span{font-weight:400;color:var(--muted-2);font-size:.76rem}
+
+/* ---- ตารางแผนก ---- */
+table.dept{width:100%;border-collapse:separate;border-spacing:0 5px;font-size:.82rem;min-width:520px}
+table.dept th{font-size:.71rem;font-weight:600;color:var(--muted);padding:4px 8px;text-align:center;line-height:1.35}
+table.dept th.rowh{text-align:left;font-size:.82rem;color:var(--ink);white-space:nowrap}
+table.dept td{text-align:center;padding:11px 8px;background:var(--brand-50);border-radius:8px}
+table.dept td b{font:700 .95rem Inter,sans-serif;color:var(--brand-700)}
+table.dept td span{color:var(--muted-2);font-size:.74rem}
+table.dept td.muted{background:#f7fafd;color:var(--muted-2);font-size:.78rem;text-align:left;padding-left:14px}
+
 /* ==================== print ==================== */
 @media print{
   @page{size:A4;margin:12mm}
@@ -506,7 +551,9 @@ const DEPARTMENTS = [
   S('HR & GA'),
   S('Accounting'),
   S('Warehouse'),
-  S('RCV. & Inspection')
+  S('RCV. & Inspection'),
+  S('Procurement'),
+  S('Import-Export')
 ];
 const B1   = T('อาคาร 1','Building 1');
 const B2   = T('อาคาร 2','Building 2');
@@ -902,296 +949,305 @@ document.querySelectorAll('[data-go]').forEach(btn=>{
 window.addEventListener('hashchange', routeFromHash);
 
 /* ==========================================================
-   DASHBOARD  —  exec view + detail view + TH/EN toggle
-   ข้อมูลถูกตัดชื่อและรหัสพนักงานออกที่ฝั่งเซิร์ฟเวอร์แล้ว
+   DASHBOARD — ฉบับอ่านง่าย
+   ตัวเลขทุกตัวในหน้านี้เป็น "จำนวนคน" ไม่ใช่เปอร์เซ็นต์
    ========================================================== */
 const DASH = (() => {
-  const HEADCOUNT = 70;     // จำนวนพนักงานทั้งหมด ใช้คิด % การตอบกลับ
-  const MIN_GROUP = 5;      // กลุ่มเล็กกว่านี้ไม่แสดง กันระบุตัวบุคคล
+  const HEADCOUNT = 70;     // จำนวนพนักงานทั้งหมด
+  const MIN_GROUP = 1;      // แสดงผลแม้มีผู้ตอบคนเดียว (บางแผนกมีคนเดียว)
+  const ENOUGH    = 25;     // ผู้ตอบน้อยกว่านี้ ขึ้นคำเตือนว่าตัวเลขยังไม่นิ่ง
 
   let HEADERS = [], ROWS = [], loaded = false;
   let lang = 'th', mode = 'exec';
 
-  const L  = (th,en) => lang==='th' ? th : en;
-  const $  = id => document.getElementById(id);
-  const E  = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const L = (th,en) => lang==='th' ? th : en;
+  const $ = id => document.getElementById(id);
+  const E = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   const splitTh = v => { const i=String(v).indexOf(' / ');
     return i===-1 ? {th:String(v),en:String(v)} : {th:String(v).slice(0,i), en:String(v).slice(i+3)}; };
-  const V  = v => { const s=splitTh(v); return (lang==='th' ? s.th : s.en) || s.th; };
-  const V2 = v => { const s=splitTh(v); return lang==='th' ? s.en : s.th; };
+  const V  = v => { const s=splitTh(v); return (lang==='th'?s.th:s.en)||s.th; };
+  const V2 = v => { const s=splitTh(v); return lang==='th'?s.en:s.th; };
+  const P  = n => `${n} ${L('คน','')}`.trim() + (lang==='en' ? (n===1?' person':' people') : '');
 
   const PERIODS = [
-    {k:'meal',       th:'พักกลางวัน: ช่วงรับประทานอาหาร', en:'Lunch: mealtime'},
-    {k:'afterlunch', th:'พักกลางวัน: ช่วงหลังรับประทานอาหาร', en:'Lunch: after the meal'},
-    {k:'morning',    th:'พักช่วงเช้า 10:00 น.', en:'Morning break 10:00'},
-    {k:'afternoon',  th:'พักช่วงบ่าย 15:00 น.', en:'Afternoon break 15:00'},
-    {k:'evening',    th:'ก่อนทำงานล่วงเวลา 17:00 น.', en:'Before overtime 17:00'}
+    {k:'meal',       th:'พักกลางวัน ตอนกินข้าว',        en:'Lunch — mealtime'},
+    {k:'afterlunch', th:'พักกลางวัน หลังกินข้าวเสร็จ',  en:'Lunch — after eating'},
+    {k:'morning',    th:'พักเช้า 10:00 น.',             en:'Morning break 10:00'},
+    {k:'afternoon',  th:'พักบ่าย 15:00 น.',             en:'Afternoon break 15:00'},
+    {k:'evening',    th:'ก่อนทำ OT 17:00 น.',           en:'Before overtime 17:00'}
   ];
   const FIELDS = [
-    {k:'where',      th:'สถานที่', en:'Location'},
-    {k:'place_type', th:'ลักษณะพื้นที่', en:'Furniture'},
-    {k:'condition',  th:'สภาพแวดล้อม', en:'Condition'},
-    {k:'activity',   th:'กิจกรรม', en:'Activity'},
-    {k:'with',       th:'จำนวนคนที่อยู่ด้วย', en:'Group size'}
+    {k:'where',      th:'สถานที่ที่ใช้พัก',   en:'Where they go'},
+    {k:'place_type', th:'ที่นั่ง โต๊ะ เก้าอี้', en:'Seating'},
+    {k:'condition',  th:'ความเย็น แอร์ พัดลม', en:'Cooling'},
+    {k:'activity',   th:'สิ่งที่ทำตอนพัก',    en:'What they do'}
   ];
-  const OUT = 'ออกไป';                       // ค่าที่ขึ้นต้นด้วยคำนี้ = ออกนอกบริษัท
-  const AC  = 'พื้นที่ที่มีเครื่องปรับอากาศ';
-  const TBL = 'มีโต๊ะและเก้าอี้';
-  const NAP = 'นอนหลับ';
+  const OUT='ออกไป', AC='พื้นที่ที่มีเครื่องปรับอากาศ', TBL='มีโต๊ะและเก้าอี้', NAP='นอนหลับ';
 
-  /* ---------- data access ---------- */
+  /* ---------- อ่านข้อมูล ---------- */
   const col  = k => HEADERS.indexOf(k);
-  const cell = (r,k) => { const i=col(k); return i===-1 ? '' : (r[i]||''); };
+  const cell = (r,k) => { const i=col(k); return i===-1?'':(r[i]||''); };
   function counts(rows,key){
-    const m=new Map();
-    rows.forEach(r=>{ const v=cell(r,key); if(v) m.set(v,(m.get(v)||0)+1); });
+    const m=new Map(); rows.forEach(r=>{const v=cell(r,key); if(v)m.set(v,(m.get(v)||0)+1);});
     return [...m.entries()].sort((a,b)=>b[1]-a[1]);
   }
-  /** สัดส่วนของคำตอบทั้งหมดในฟิลด์นั้น รวมทุกช่วงพัก (หน่วย % ของคำตอบ) */
-  function shareAll(rows,phase,field){
-    const m=new Map(); let total=0;
-    PERIODS.forEach(p=>rows.forEach(r=>{
-      const v=cell(r,`${phase}_${p.k}_${field}`);
-      if(v){ m.set(v,(m.get(v)||0)+1); total++; }
-    }));
-    return {map:m,total};
+  /** นับ "จำนวนคน" ที่ตอบค่านั้นอย่างน้อย 1 ช่วงพัก แยกเป็นตอนนี้/อยากได้ */
+  function itemStats(rows,field){
+    const m=new Map();
+    const get=v=>{ if(!m.has(v)) m.set(v,{value:v,now:0,want:0}); return m.get(v); };
+    rows.forEach(r=>{
+      const a=new Set(), b=new Set();
+      PERIODS.forEach(p=>{
+        const x=cell(r,`now_${p.k}_${field}`);  if(x) a.add(x);
+        const y=cell(r,`want_${p.k}_${field}`); if(y) b.add(y);
+      });
+      a.forEach(v=>get(v).now++); b.forEach(v=>get(v).want++);
+    });
+    return [...m.values()];
   }
-  const pctOf = (m,total,v)=> total ? Math.round((m.get(v)||0)/total*100) : 0;
-  /** % ของผู้ตอบที่เลือกค่าที่ขึ้นต้นด้วย prefix อย่างน้อย 1 ช่วงพัก */
-  function anyPeriod(rows,phase,field,prefix){
-    if(!rows.length) return 0;
-    const n=rows.filter(r=>PERIODS.some(p=>String(cell(r,`${phase}_${p.k}_${field}`)).indexOf(prefix)===0)).length;
-    return {n, pct:Math.round(n/rows.length*100)};
+  function allItems(rows){
+    const out=[];
+    FIELDS.forEach(f=>itemStats(rows,f.k).forEach(o=>out.push({...o,field:f,gap:o.want-o.now})));
+    return out;
   }
+  /** จำนวนคนที่ตอบค่าที่ขึ้นต้นด้วย prefix อย่างน้อย 1 ช่วงพัก */
+  function peopleWith(rows,phase,field,prefix){
+    return rows.filter(r=>PERIODS.some(p=>String(cell(r,`${phase}_${p.k}_${field}`)).indexOf(prefix)===0)).length;
+  }
+  const findVal = (rows,field,prefix) => {
+    const it=itemStats(rows,field).find(o=>o.value.indexOf(prefix)===0);
+    return it||{now:0,want:0};
+  };
 
-  /* ---------- โหลดข้อมูล ---------- */
+  /* ---------- โหลด ---------- */
   async function load(force){
-    if(loaded && !force) return render();
-    paint(`<div class="dash-state"><div class="spin"></div>
-      <h2>${L('กำลังโหลดข้อมูล','Loading data')}</h2></div>`);
+    if(loaded&&!force) return render();
+    paint(`<div class="dash-state"><div class="spin"></div><h2>${L('กำลังโหลดข้อมูล','Loading data')}</h2></div>`);
     try{
       const res=await fetch(CONFIG.ENDPOINT+'?action=summary&t='+Date.now());
       const d=await res.json();
       if(!d.ok) throw new Error(d.error||'error');
-      HEADERS=d.headers||[]; ROWS=d.rows||[]; loaded=true;
-      render();
+      HEADERS=d.headers||[]; ROWS=d.rows||[]; loaded=true; render();
     }catch(err){
       console.error(err);
       paint(`<div class="dash-state"><div class="badge">&#9888;</div>
         <h2>${L('โหลดข้อมูลไม่สำเร็จ','Could not load data')}</h2>
         <p>${L('ตรวจสอบว่า Apps Script ถูก deploy เวอร์ชันล่าสุด และตั้ง Who has access เป็น Anyone',
-               'Check that the Apps Script is deployed as a new version with access set to Anyone.')}</p>
+               'Check the Apps Script is deployed as a new version with access set to Anyone.')}</p>
         <div style="margin-top:16px"><button class="mini" onclick="DASH.load(true)">${L('ลองใหม่','Retry')}</button></div></div>`);
     }
   }
-  const paint = html => { $('dash-body').innerHTML = html; };
+  const paint = h => { $('dash-body').innerHTML = h; };
 
-  /* ---------- filters ---------- */
   function filtered(){
     const dep=$('f-dep')?.value||'', wp=$('f-wp')?.value||'';
     return ROWS.filter(r=>(!dep||cell(r,'department')===dep)&&(!wp||cell(r,'workplace')===wp));
   }
   const uniques = k => [...new Set(ROWS.map(r=>cell(r,k)).filter(Boolean))].sort();
 
-  /* ==========================================================
-     คำนวณช่องว่าง (ใช้ทั้งสองหน้า)
-     ========================================================== */
-  function gapList(rows){
-    const out=[];
-    FIELDS.filter(f=>f.k!=='with').forEach(f=>{
-      const now=shareAll(rows,'now',f.k), want=shareAll(rows,'want',f.k);
-      new Set([...now.map.keys(),...want.map.keys()]).forEach(v=>{
-        const a=pctOf(now.map,now.total,v), b=pctOf(want.map,want.total,v);
-        out.push({field:f, value:v, now:a, want:b, gap:b-a});
-      });
-    });
-    return out.sort((x,y)=>y.gap-x.gap);
+  /* ---------- ชิ้นส่วนกราฟ ---------- */
+  /** แถบคู่ ตอนนี้ / อยากได้ พร้อมประโยคสรุป */
+  function pairBar(o,total){
+    const w=n=>total?Math.round(n/total*100):0;
+    const diff=o.want-o.now;
+    const verdict = diff>0
+      ? `<span class="need">${L(`ยังขาดอยู่ ${diff} คน`,`${diff} more want it`)}</span>`
+      : diff<0 ? `<span class="over">${L(`มีเกินความต้องการ ${-diff} คน`,`${-diff} fewer want it`)}</span>`
+      : `<span class="ok">${L('พอดีแล้ว','Already balanced')}</span>`;
+    return `<div class="pb">
+      <div class="pb-name">${E(V(o.value))}<em>${E(V2(o.value))}</em></div>
+      <div class="pb-rows">
+        <div class="pb-row"><i>${L('ตอนนี้ได้','Have now')}</i>
+          <div class="track"><div class="fill" style="width:${w(o.now)}%"></div></div>
+          <b>${o.now}</b></div>
+        <div class="pb-row"><i>${L('อยากได้','Want')}</i>
+          <div class="track"><div class="fill w" style="width:${w(o.want)}%"></div></div>
+          <b>${o.want}</b></div>
+      </div>
+      <div class="pb-verdict">${verdict}</div>
+    </div>`;
   }
-  /** ช่วงพักที่ค่านั้นมีช่องว่างมากที่สุด ใช้เขียนคำอธิบาย */
-  function peakPeriod(rows,field,value){
-    let best=null;
-    PERIODS.forEach(p=>{
-      const a=rows.filter(r=>cell(r,`now_${p.k}_${field}`)===value).length;
-      const b=rows.filter(r=>cell(r,`want_${p.k}_${field}`)===value).length;
-      if(!best||b-a>best.d) best={p,d:b-a};
-    });
-    return best;
+  /** แถบเดี่ยว นับจำนวนคน */
+  function simpleBar(list,total){
+    if(!list.length) return `<p class="desc">${L('ยังไม่มีข้อมูล','No data')}</p>`;
+    const max=Math.max(...list.map(x=>x[1]),1);
+    return `<div class="sb-list">${list.map(([v,n])=>`
+      <div class="sb"><div class="sb-name">${E(V(v))}<em>${E(V2(v))}</em></div>
+        <div class="track"><div class="fill" style="width:${n/max*100}%"></div></div>
+        <b>${n}</b></div>`).join('')}</div>`;
   }
+  const warn = n => n>=ENOUGH ? '' : `<div class="warnbar">${L(
+    `ตอนนี้มีผู้ตอบ ${n} คน จาก ${HEADCOUNT} คน ตัวเลขยังเปลี่ยนได้ง่าย ควรรอให้ครบอย่างน้อย ${ENOUGH} คนก่อนนำไปตัดสินใจ`,
+    `Only ${n} of ${HEADCOUNT} employees have responded. Figures can still shift a lot — wait for at least ${ENOUGH} before deciding.`)}</div>`;
 
   /* ==========================================================
-     หน้าผู้บริหาร
+     หน้าสรุปผู้บริหาร
      ========================================================== */
   function execView(rows){
     const n=rows.length;
-    const outNow=anyPeriod(rows,'now','where',OUT), outWant=anyPeriod(rows,'want','where',OUT);
-    const pull=Math.max(0,outNow.n-outWant.n);
-    const acNow=shareAll(rows,'now','condition'), acWant=shareAll(rows,'want','condition');
-    const acN=pctOf(acNow.map,acNow.total,`${AC} / Air-conditioned area`)||pctOf(acNow.map,acNow.total,[...acNow.map.keys()].find(k=>k.indexOf(AC)===0)||'');
-    const acW=pctOf(acWant.map,acWant.total,[...acWant.map.keys()].find(k=>k.indexOf(AC)===0)||'');
-    const nap=anyPeriod(rows,'want','activity',NAP);
+    const outNow=peopleWith(rows,'now','where',OUT), outWant=peopleWith(rows,'want','where',OUT);
+    const pull=Math.max(0,outNow-outWant);
+    const ac=findVal(rows,'condition',AC);
+    const nap=findVal(rows,'activity',NAP);
 
-    const tops=gapList(rows).filter(g=>g.gap>0).slice(0,3);
-    const acts=tops.map((g,i)=>{
-      const pk=peakPeriod(rows,`${g.field.k}`,g.value);
-      const people=Math.round(g.want/100*n);
-      return `<div class="act ${i===1?'p2':i===2?'p3':''}">
+    const tops=allItems(rows).filter(o=>o.gap>0).sort((a,b)=>b.gap-a.gap).slice(0,3);
+    const acts=tops.map((o,i)=>`
+      <div class="act ${i===1?'p2':i===2?'p3':''}">
         <div class="rank">${i+1}</div>
         <div>
-          <h4>${E(V(g.value))}</h4>
+          <h4>${E(V(o.value))}</h4>
           <p>${L(
-            `เป็นความต้องการที่ห่างจากสภาพปัจจุบันมากที่สุดในหมวด “${g.field.th}” ` +
-            (pk?`โดยเด่นชัดที่สุดในช่วง ${pk.p.th}`:''),
-            `The widest gap in the “${g.field.en}” category` +
-            (pk?`, most pronounced during ${pk.p.en}`:'') + '.')}</p>
-          <div class="ev">${L('คิดจากคำตอบทั้ง 5 ช่วงพัก','Aggregated across all five break periods')} · ${g.field[lang]}</div>
+            `ตอนนี้มี <b>${o.now} คน</b> ที่ได้แบบนี้ แต่มี <b>${o.want} คน</b> ที่อยากได้ — ยังขาดอยู่ <b>${o.gap} คน</b>`,
+            `<b>${o.now}</b> have this today, but <b>${o.want}</b> want it — a shortfall of <b>${o.gap}</b>.`)}</p>
+          <div class="ev">${L('หมวด','Category')}: ${o.field[lang]}</div>
         </div>
         <div class="gapbox">
-          <div class="gaprow"><i>${L('ตอนนี้','Now')}</i><div class="track"><div class="fill" style="width:${g.now}%"></div></div><span>${g.now}%</span></div>
-          <div class="gaprow"><i>${L('อยากได้','Want')}</i><div class="track"><div class="fill w" style="width:${g.want}%"></div></div><span>${g.want}%</span></div>
-          <div class="impact">&#9650; ${L('ส่งผลต่อราว','Affects about')} ${people} ${L('คน','people')}</div>
-        </div></div>`;
-    }).join('') || `<div class="card"><p class="desc">${L('ยังไม่พบช่องว่างที่ชัดเจน อาจเพราะจำนวนผู้ตอบยังน้อย','No clear gaps yet — likely too few responses.')}</p></div>`;
+          <div class="gaprow"><i>${L('ตอนนี้ได้','Have')}</i><div class="track"><div class="fill" style="width:${n?o.now/n*100:0}%"></div></div><span>${o.now}</span></div>
+          <div class="gaprow"><i>${L('อยากได้','Want')}</i><div class="track"><div class="fill w" style="width:${n?o.want/n*100:0}%"></div></div><span>${o.want}</span></div>
+          <div class="impact">${L(`ขาดอยู่ ${o.gap} คน`,`Short by ${o.gap}`)}</div>
+        </div></div>`).join('')
+      || `<div class="card"><p class="desc">${L('ยังไม่พบความต้องการที่ชัดเจน','No clear demand yet')}</p></div>`;
 
     return `
+      ${warn(n)}
       <div class="verdict">
-        <div class="lbl">${L('ข้อค้นพบหลัก','Key finding')}</div>
+        <div class="lbl">${L('สรุปสั้นที่สุด','In one line')}</div>
         <h2>${L(
-          `พนักงาน <b>${outNow.pct}%</b> ต้องออกไปพักนอกบริษัท แต่มีเพียง <b>${outWant.pct}%</b> ที่อยากออกไปจริง ๆ`,
-          `<b>${outNow.pct}%</b> currently leave the premises on their break, but only <b>${outWant.pct}%</b> actually want to`)}</h2>
+          `ตอนนี้มี <b>${outNow} คน</b> ที่ต้องออกไปพักนอกบริษัท แต่มีแค่ <b>${outWant} คน</b> ที่อยากออกไปจริง ๆ`,
+          `<b>${outNow}</b> people currently leave the premises on breaks, but only <b>${outWant}</b> actually want to`)}</h2>
         <p>${L(
-          `ส่วนต่าง ${Math.max(0,outNow.pct-outWant.pct)}% หรือประมาณ <strong>${pull} คน</strong> คือผู้ที่ออกไปข้างนอกเพราะพื้นที่ในบริษัทไม่ตอบโจทย์ ไม่ใช่เพราะอยากออกไป หากปรับปรุงพื้นที่พักให้ตรงความต้องการ จะดึงคนกลุ่มนี้กลับมาพักในบริษัทได้`,
-          `The ${Math.max(0,outNow.pct-outWant.pct)}-point difference — roughly <strong>${pull} people</strong> — represents staff who go outside because on-site facilities fall short, not because they prefer to. Improving break areas would bring them back.`)}</p>
+          `แปลว่ามีราว <strong>${pull} คน</strong> ที่ออกไปข้างนอกเพราะที่พักในบริษัทไม่ถูกใจ ไม่ใช่เพราะอยากออกไป ถ้าปรับปรุงที่พักให้ตรงใจ คนกลุ่มนี้จะกลับมาพักในบริษัท`,
+          `That means about <strong>${pull} people</strong> go out because on-site spaces do not suit them, not because they prefer to. Better break areas would bring them back.`)}</p>
       </div>
 
       <div class="nums">
         <div class="num good"><b style="color:var(--brand)">${n}<small> / ${HEADCOUNT}</small></b>
-          <div class="cap">${L('จำนวนผู้ตอบแบบสำรวจ','Survey responses')}</div>
-          <div class="sub">${L(`คิดเป็น ${Math.round(n/HEADCOUNT*100)}% ของพนักงานทั้งหมด`,`${Math.round(n/HEADCOUNT*100)}% of all employees`)}</div></div>
-        <div class="num warn"><b style="color:#c07f00">${acW}<small>%</small></b>
-          <div class="cap">${L('ต้องการพื้นที่พักที่มีเครื่องปรับอากาศ','Want an air-conditioned break area')}</div>
-          <div class="sub">${L(`ปัจจุบันได้พักในพื้นที่ปรับอากาศเพียง ${acN}%`,`Only ${acN}% currently have one`)}</div></div>
-        <div class="num warn"><b style="color:#c07f00">${nap.pct}<small>%</small></b>
-          <div class="cap">${L('ต้องการเอนตัวหรือนอนพัก','Want to lie down or nap')}</div>
-          <div class="sub">${L(`ประมาณ ${nap.n} คน ต้องการที่เอนตัวอย่างน้อย 1 ช่วงพัก`,`About ${nap.n} people in at least one break period`)}</div></div>
+          <div class="cap">${L('ตอบแบบสำรวจแล้ว','Have responded')}</div>
+          <div class="sub">${L(`เหลืออีก ${HEADCOUNT-n} คนที่ยังไม่ตอบ`,`${HEADCOUNT-n} still to respond`)}</div></div>
+        <div class="num warn"><b style="color:#c07f00">${ac.want}<small> ${L('คน','ppl')}</small></b>
+          <div class="cap">${L('อยากพักในที่มีแอร์','Want an air-conditioned spot')}</div>
+          <div class="sub">${L(`ตอนนี้มีแค่ ${ac.now} คนที่ได้พักในที่มีแอร์`,`Only ${ac.now} have one today`)}</div></div>
+        <div class="num warn"><b style="color:#c07f00">${nap.want}<small> ${L('คน','ppl')}</small></b>
+          <div class="cap">${L('อยากมีที่เอนตัวหรืองีบหลับ','Want somewhere to lie down')}</div>
+          <div class="sub">${L(`ตอนนี้มี ${nap.now} คนที่ได้งีบตอนพัก`,`${nap.now} manage it today`)}</div></div>
       </div>
 
-      <h3 class="section-t">${L('3 เรื่องที่ควรทำ เรียงตามผลกระทบ','Top 3 priorities, ranked by impact')}</h3>
-      <p class="section-d">${L('เรียงจากช่องว่างระหว่างสิ่งที่พนักงานได้รับจริงกับสิ่งที่ต้องการ คำนวณอัตโนมัติจากข้อมูลล่าสุด',
-                               'Ranked by the gap between what staff have and what they want, computed from the latest data.')}</p>
+      <h3 class="section-t">${L('3 เรื่องที่ควรทำก่อน','Top 3 things to fix first')}</h3>
+      <p class="section-d">${L('เรียงจากเรื่องที่คนอยากได้มากกว่าที่มีอยู่จริงมากที่สุด ตัวเลขทั้งหมดคือจำนวนคน',
+                               'Ranked by the biggest shortfall. All figures are numbers of people.')}</p>
       <div class="acts">${acts}</div>
 
       <div class="card" style="margin-top:14px;text-align:center">
-        <p class="desc" style="margin:0 0 12px">${L('ต้องการดูกราฟแยกตามช่วงพัก แผนก และสถานที่','Need the breakdown by period, department and location?')}</p>
-        <button class="mini on no-print" onclick="DASH.setMode('detail')">${L('ดูรายละเอียดทั้งหมด','View full breakdown')} &rarr;</button>
+        <p class="desc" style="margin:0 0 12px">${L('อยากดูละเอียดกว่านี้ แยกตามช่วงพักและแผนก','Want the breakdown by break period and department?')}</p>
+        <button class="mini on no-print" onclick="DASH.setMode('detail')">${L('ดูรายละเอียด','View details')} &rarr;</button>
       </div>`;
   }
 
   /* ==========================================================
      หน้ารายละเอียด
      ========================================================== */
-  const PALETTE = ['#0072bc','#66aede','#f0a500','#9bb8cc','#2fa37c','#c3d3de'];
+  function detailView(rows){
+    const n=rows.length;
+    const outNow=peopleWith(rows,'now','where',OUT), outWant=peopleWith(rows,'want','where',OUT);
+    const ac=findVal(rows,'condition',AC), tbl=findVal(rows,'place_type',TBL);
 
-  function donut(rows,phase){
-    const {map,total}=shareAll(rows,phase,'where');
-    const list=[...map.entries()].sort((a,b)=>b[1]-a[1]).slice(0,5);
-    const outside=[...map.entries()].filter(([k])=>k.indexOf(OUT)===0).reduce((a,b)=>a+b[1],0);
-    let off=25;
-    const arcs=list.map(([v,c],i)=>{
-      const pct=total?c/total*100:0;
-      const s=`<circle cx="21" cy="21" r="15.9" fill="none" stroke="${PALETTE[i%6]}" stroke-width="7"
-        stroke-dasharray="${pct.toFixed(1)} ${(100-pct).toFixed(1)}" stroke-dashoffset="${off}"/>`;
-      off-=pct; return s;
+    // อยากได้อะไรมากที่สุด
+    const wants=allItems(rows).sort((a,b)=>b.want-a.want).slice(0,8);
+    // ช่องว่างมากที่สุด
+    const gaps=allItems(rows).filter(o=>o.gap!==0).sort((a,b)=>Math.abs(b.gap)-Math.abs(a.gap)).slice(0,8);
+
+    // แต่ละช่วงพัก อยากได้ความเย็นแบบไหน
+    const periodRows=PERIODS.map(p=>{
+      const c=counts(rows,`want_${p.k}_condition`);
+      const tot=c.reduce((a,b)=>a+b[1],0); if(!tot) return '';
+      const acN=c.filter(([x])=>x.indexOf(AC)===0).reduce((a,b)=>a+b[1],0);
+      return `<div class="prow"><div class="pname">${p[lang]}</div>
+        <div class="track"><div class="fill" style="width:${acN/tot*100}%"></div></div>
+        <b>${acN}<span>/${tot}</span></b></div>`;
     }).join('');
-    return `<div class="donutwrap">
-      <svg viewBox="0 0 42 42" style="width:126px;height:126px;flex:none">
-        <circle cx="21" cy="21" r="15.9" fill="none" stroke="var(--line-2)" stroke-width="7"/>${arcs}
-        <text x="21" y="20.3" text-anchor="middle" style="font:700 5px Inter;fill:#12293d">${total?Math.round(outside/total*100):0}%</text>
-        <text x="21" y="25" text-anchor="middle" style="font:400 2.5px Inter;fill:#7b91a4">${L('ออกนอกบริษัท','outside')}</text>
-      </svg>
-      <div class="dlist">${list.map(([v,c],i)=>
-        `<div class="ditem"><i style="background:${PALETTE[i%6]}"></i>${E(V(v))}<b>${total?Math.round(c/total*100):0}%</b></div>`).join('')}</div>
-    </div>`;
-  }
 
-  function gapChart(rows){
-    const list=gapList(rows).filter(g=>Math.abs(g.gap)>=3).slice(0,10);
-    if(!list.length) return `<p class="desc">${L('ยังไม่มีข้อมูลเพียงพอ','Not enough data yet')}</p>`;
-    const max=Math.max(...list.map(g=>Math.abs(g.gap)),1);
-    return `<div class="gaps">${list.map(g=>`
-      <div class="gap">
-        <div class="gname">${E(V(g.value))}<em>${E(V2(g.value))}</em></div>
-        <div class="axis"><div class="gbar ${g.gap>=0?'pos':'neg'}" style="width:${Math.abs(g.gap)/max*48}%"></div></div>
-        <div class="gval ${g.gap>=0?'pos':'neg'}">${g.gap>0?'+':''}${g.gap}</div>
-      </div>`).join('')}</div>
-      <div class="axlbl"><span>&#9664; ${L('มีเกินความต้องการ','More than needed')}</span><span>${L('ขาดแคลน','Unmet demand')} &#9654;</span></div>`;
-  }
-
-  function stackedCondition(rows){
-    const keys=[AC,'พื้นที่ที่มีพัดลม','พื้นที่ที่ไม่มีทั้งเครื่องปรับอากาศ'];
-    const colr=['#0072bc','#66aede','#c3d3de'];
-    return `<div class="stk">${PERIODS.map(p=>{
-      const c=counts(rows,`want_${p.k}_condition`); const tot=c.reduce((a,b)=>a+b[1],0);
-      if(!tot) return '';
-      const seg=keys.map((k,i)=>{
-        const v=c.filter(([x])=>x.indexOf(k)===0).reduce((a,b)=>a+b[1],0);
-        const pct=Math.round(v/tot*100);
-        return pct? `<div style="width:${pct}%;background:${colr[i]};${i===2?'color:#3c5568':''}">${pct>7?pct+'%':''}</div>`:'';
-      }).join('');
-      return `<div class="srow"><div class="sl"><b>${p[lang]}</b><span>n=${tot}</span></div>
-        <div class="sbar">${seg}</div></div>`;
-    }).join('')}</div>
-    <div class="legend" style="margin-top:13px">
-      <span><i style="background:#0072bc"></i>${L('มีเครื่องปรับอากาศ','Air-conditioned')}</span>
-      <span><i style="background:#66aede"></i>${L('มีพัดลม','Fan')}</span>
-      <span><i style="background:#c3d3de"></i>${L('ไม่มีทั้งสองอย่าง','Neither')}</span></div>`;
-  }
-
-  function heatmap(){
+    // แผนก
     const cols=[
-      {th:'ปรับอากาศ',en:'Air-con',f:'condition',p:AC},
-      {th:'โต๊ะ+เก้าอี้',en:'Table+chairs',f:'place_type',p:TBL},
-      {th:'ที่เอนตัว',en:'Nap space',f:'activity',p:NAP},
-      {th:'ออกนอกบริษัท',en:'Go outside',f:'where',p:OUT}
+      {th:'อยากได้แอร์',en:'Air-con',f:'condition',p:AC},
+      {th:'อยากได้โต๊ะเก้าอี้',en:'Table+chairs',f:'place_type',p:TBL},
+      {th:'อยากมีที่เอนตัว',en:'Nap space',f:'activity',p:NAP},
+      {th:'ยังอยากออกไปข้างนอก',en:'Go outside',f:'where',p:OUT}
     ];
-    const deps=uniques('department');
-    const shade=v=>{ const s=['#eff7fc','#d9ecf8','#b8daf0','#8dc4e6','#6bb0dc','#4f9fd3'];
-      const c=s[Math.min(5,Math.floor(v/17))]; return `background:${c};color:${v>=68?'#fff':'#0b3a56'}`; };
-    const body=deps.map(d=>{
+    const deptRows=uniques('department').map(d=>{
       const rs=ROWS.filter(r=>cell(r,'department')===d);
       if(rs.length<MIN_GROUP)
-        return `<tr><th class="rowh">${E(V(d))}</th><td colspan="4" style="background:#f6f9fc;color:#9bb0c1;font-weight:500">
-          ${L(`ผู้ตอบน้อยกว่า ${MIN_GROUP} คน — ไม่แสดงเพื่อป้องกันการระบุตัวบุคคล`,`Fewer than ${MIN_GROUP} responses — hidden`)}
-          </td><td style="background:#f6f9fc;color:#7b91a4">${rs.length}</td></tr>`;
+        return `<tr><th class="rowh">${E(V(d))}</th><td colspan="4" class="muted">${L(
+          `มีผู้ตอบ ${rs.length} คน — น้อยเกินไป ไม่แสดงเพื่อไม่ให้เดาได้ว่าใครตอบ`,
+          `${rs.length} responses — too few to show`)}</td><td class="muted">${rs.length}</td></tr>`;
       return `<tr><th class="rowh">${E(V(d))}</th>${cols.map(c=>{
-        const v=anyPeriod(rs,'want',c.f,c.p).pct;
-        return `<td style="${shade(v)}">${v}</td>`;
-      }).join('')}<td style="background:#f6f9fc;color:#7b91a4">${rs.length}</td></tr>`;
+        const v=peopleWith(rs,'want',c.f,c.p);
+        return `<td><b>${v}</b><span>/${rs.length}</span></td>`;
+      }).join('')}<td class="muted">${rs.length}</td></tr>`;
     }).join('');
-    return `<table class="heat"><thead><tr><th class="rowh">${L('แผนก','Department')}</th>
-      ${cols.map(c=>`<th>${c[lang]}</th>`).join('')}<th>n</th></tr></thead><tbody>${body}</tbody></table>
-      <div class="legend-h"><span>${L('ต่ำ','Low')}</span><span class="sc">
-        <i style="background:#eff7fc"></i><i style="background:#d9ecf8"></i><i style="background:#b8daf0"></i>
-        <i style="background:#8dc4e6"></i><i style="background:#6bb0dc"></i><i style="background:#4f9fd3"></i>
-      </span><span>${L('สูง','High')}</span>
-      <span style="margin-left:12px">${L('ตัวเลขคือ % ของผู้ตอบในแผนกนั้นที่ต้องการสิ่งนั้นอย่างน้อย 1 ช่วงพัก',
-        '% of respondents in that department wanting it in at least one break period')}</span></div>`;
+
+    return `
+      ${warn(n)}
+      <div class="kpis">
+        <div class="kpi"><div class="t">${L('ตอบแบบสำรวจแล้ว','Responded')}</div>
+          <b style="color:var(--brand)">${n}</b><div class="d flat">${L(`จาก ${HEADCOUNT} คน`,`of ${HEADCOUNT}`)}</div></div>
+        <div class="kpi"><div class="t">${L('ออกไปพักนอกบริษัท','Leave the premises')}</div>
+          <b style="color:#c07f00">${outNow} <span style="font-size:.9rem;color:var(--muted-2)">&rarr;</span> ${outWant}</b>
+          <div class="d up">${L(`ดึงกลับได้ ${Math.max(0,outNow-outWant)} คน`,`${Math.max(0,outNow-outWant)} could return`)}</div></div>
+        <div class="kpi"><div class="t">${L('อยากพักในที่มีแอร์','Want air-conditioning')}</div>
+          <b style="color:var(--warn)">${ac.want}</b><div class="d dn">${L(`ตอนนี้ได้ ${ac.now} คน`,`${ac.now} have it now`)}</div></div>
+        <div class="kpi"><div class="t">${L('อยากมีโต๊ะและเก้าอี้','Want a table and chairs')}</div>
+          <b style="color:var(--warn)">${tbl.want}</b><div class="d dn">${L(`ตอนนี้ได้ ${tbl.now} คน`,`${tbl.now} have it now`)}</div></div>
+      </div>
+
+      <div class="card">
+        <h3>${L('พนักงานอยากได้อะไรมากที่สุด','What people want most')}</h3>
+        <p class="desc">${L(`นับจำนวนคนที่ตอบว่าอยากได้ จากผู้ตอบทั้งหมด ${n} คน`,`Number of people who asked for it, out of ${n} respondents`)}</p>
+        ${simpleBar(wants.map(o=>[o.value,o.want]),n)}
+      </div>
+
+      <div class="card">
+        <h3>${L('เทียบกัน: ตอนนี้ได้ กับ อยากได้','Side by side: have now vs want')}</h3>
+        <p class="desc">${L('แถบสีน้ำเงินคือจำนวนคนที่ได้อยู่แล้ว แถบสีส้มคือจำนวนคนที่อยากได้ ถ้าส้มยาวกว่าน้ำเงินแปลว่ายังขาด',
+                            'Blue = people who already have it. Orange = people who want it. Orange longer than blue means a shortfall.')}</p>
+        <div class="pb-list">${gaps.map(o=>pairBar(o,n)).join('')}</div>
+      </div>
+
+      <div class="card">
+        <h3>${L('ช่วงพักไหนอยากได้แอร์มากที่สุด','Which break needs cooling most')}</h3>
+        <p class="desc">${L('ตัวเลขคือจำนวนคนที่อยากพักในที่มีแอร์ ในช่วงพักนั้น','People wanting an air-conditioned spot in each break')}</p>
+        <div class="plist">${periodRows}</div>
+      </div>
+
+      <div class="card">
+        <h3>${L('แยกตามแผนก','By department')}</h3>
+        <p class="desc">${L('ตัวเลขคือ จำนวนคนที่อยากได้ / จำนวนผู้ตอบในแผนกนั้น (ไม่ขึ้นกับตัวกรองด้านบน)',
+                            'People wanting it / respondents in that department. Not affected by the filters above.')}</p>
+        <div style="overflow-x:auto"><table class="dept">
+          <thead><tr><th class="rowh">${L('แผนก','Department')}</th>${cols.map(c=>`<th>${c[lang]}</th>`).join('')}<th>${L('ผู้ตอบ','n')}</th></tr></thead>
+          <tbody>${deptRows}</tbody></table></div>
+      </div>
+
+      <div class="card p-table">
+        <h3>${L('ตารางคำตอบทั้งหมด','Every answer, counted')}</h3>
+        <p class="desc">${L('สำหรับคนที่อยากดูตัวเลขดิบ ปรับตามตัวกรองด้านบน','Raw counts for every question. Reflects the filters above.')}</p>
+        ${tableHtml(rows)}
+      </div>`;
   }
 
   function summaryRows(rows){
     const out=[];
-    const push=(label,key)=>{ const c=counts(rows,key); if(!c.length) return;
-      out.push({grp:label});
-      c.forEach(([v,n])=>out.push({v,n,pct:rows.length?Math.round(n/rows.length*100):0})); };
+    const push=(label,key)=>{ const c=counts(rows,key); if(!c.length)return;
+      out.push({grp:label}); c.forEach(([v,n])=>out.push({v,n})); };
     push(L('แผนก','Department'),'department');
     push(L('พื้นที่ทำงานหลัก','Primary work location'),'workplace');
     PERIODS.forEach(p=>{
       if(p.k==='meal'){
-        push(`[${L('ปัจจุบัน','Current')}] ${p[lang]} — ${L('รับประทานหรือไม่','Eats lunch')}`,'now_meal_eat');
-        push(`[${L('ต้องการ','Desired')}] ${p[lang]} — ${L('รับประทานหรือไม่','Eats lunch')}`,'want_meal_eat');
+        push(`[${L('ตอนนี้','Now')}] ${p[lang]} — ${L('กินข้าวกลางวันไหม','Eats lunch')}`,'now_meal_eat');
+        push(`[${L('อยากได้','Want')}] ${p[lang]} — ${L('กินข้าวกลางวันไหม','Eats lunch')}`,'want_meal_eat');
       }
       FIELDS.forEach(f=>{
-        push(`[${L('ปัจจุบัน','Current')}] ${p[lang]} — ${f[lang]}`,`now_${p.k}_${f.k}`);
-        push(`[${L('ต้องการ','Desired')}] ${p[lang]} — ${f[lang]}`,`want_${p.k}_${f.k}`);
+        push(`[${L('ตอนนี้','Now')}] ${p[lang]} — ${f[lang]}`,`now_${p.k}_${f.k}`);
+        push(`[${L('อยากได้','Want')}] ${p[lang]} — ${f[lang]}`,`want_${p.k}_${f.k}`);
       });
     });
     return out;
@@ -1200,76 +1256,18 @@ const DASH = (() => {
     const d=summaryRows(rows);
     if(!d.length) return `<p class="desc">${L('ยังไม่มีข้อมูล','No data')}</p>`;
     return `<div class="tblwrap"><table class="sum"><thead><tr>
-      <th>${L('หัวข้อ','Item')}</th><th style="width:80px">${L('จำนวน','Count')}</th><th style="width:80px">${L('สัดส่วน','Share')}</th>
+      <th>${L('หัวข้อ','Item')}</th><th style="width:90px">${L('จำนวนคน','People')}</th>
       </tr></thead><tbody>${d.map(x=>x.grp
-        ?`<tr class="grp"><td colspan="3">${E(x.grp)}</td></tr>`
-        :`<tr><td>${E(V(x.v))}</td><td class="n">${x.n}</td><td class="n">${x.pct}%</td></tr>`).join('')}
+        ?`<tr class="grp"><td colspan="2">${E(x.grp)}</td></tr>`
+        :`<tr><td>${E(V(x.v))}</td><td class="n">${x.n}</td></tr>`).join('')}
       </tbody></table></div>`;
-  }
-
-  function detailView(rows){
-    const n=rows.length;
-    const outNow=anyPeriod(rows,'now','where',OUT), outWant=anyPeriod(rows,'want','where',OUT);
-    const acW=(()=>{ const s=shareAll(rows,'want','condition');
-      return pctOf(s.map,s.total,[...s.map.keys()].find(k=>k.indexOf(AC)===0)||''); })();
-    const match=(()=>{ let hit=0,tot=0;
-      PERIODS.forEach(p=>rows.forEach(r=>{ const a=cell(r,`now_${p.k}_where`),b=cell(r,`want_${p.k}_where`);
-        if(a&&b){ tot++; if(a===b) hit++; } })); return tot?Math.round(hit/tot*100):0; })();
-
-    return `
-      <div class="kpis">
-        <div class="kpi"><div class="t">${L('ผู้ตอบแบบสำรวจ','Responses')}</div>
-          <b style="color:var(--brand)">${n}</b><div class="d flat">${L(`จาก ${HEADCOUNT} คน`,`of ${HEADCOUNT}`)} (${Math.round(n/HEADCOUNT*100)}%)</div></div>
-        <div class="kpi"><div class="t">${L('ออกไปพักนอกบริษัท<br>ปัจจุบัน → ที่ต้องการ','Leaving the premises<br>now → desired')}</div>
-          <b style="color:#c07f00">${outNow.pct}% <span style="font-size:.95rem;color:var(--muted-2)">&rarr;</span> ${outWant.pct}%</b>
-          <div class="d up">&#9660; ${L(`ดึงกลับได้ ${Math.max(0,outNow.n-outWant.n)} คน`,`${Math.max(0,outNow.n-outWant.n)} could return`)}</div></div>
-        <div class="kpi"><div class="t">${L('ต้องการพื้นที่ปรับอากาศ','Want air-conditioning')}</div>
-          <b style="color:var(--warn)">${acW}%</b><div class="d dn">${L('ความต้องการอันดับหนึ่ง','Top-ranked need')}</div></div>
-        <div class="kpi"><div class="t">${L('พื้นที่ปัจจุบันตรงกับที่ต้องการ','Current matches desired')}</div>
-          <b>${match}%</b><div class="d ${match>=60?'up':'dn'}">${L(`ยังห่างเป้า ${100-match}%`,`${100-match}% still unmet`)}</div></div>
-      </div>
-
-      <div class="card">
-        <h3>${L('ช่องว่างระหว่างสิ่งที่ได้รับกับสิ่งที่ต้องการ','Demand gap — sorted by size')}</h3>
-        <p class="desc">${L('แท่งเขียวไปทางขวา = ต้องการมากกว่าที่มีอยู่ (ควรเพิ่ม) · แท่งแดงไปทางซ้าย = มีมากเกินความต้องการ · หน่วยเป็นจุดเปอร์เซ็นต์',
-                            'Green to the right = unmet demand. Red to the left = more than needed. Units are percentage points.')}</p>
-        ${gapChart(rows)}
-      </div>
-
-      <div class="grid two">
-        <div class="card"><h3>${L('พักที่ไหน — ปัจจุบัน','Where people go — now')}</h3>
-          <p class="desc">${L('รวมทุกช่วงพัก','All break periods combined')}</p>${donut(rows,'now')}</div>
-        <div class="card"><h3>${L('พักที่ไหน — ที่ต้องการ','Where people want to go')}</h3>
-          <p class="desc">${L('รวมทุกช่วงพัก','All break periods combined')}</p>${donut(rows,'want')}</div>
-      </div>
-
-      <div class="card">
-        <h3>${L('สภาพแวดล้อมที่ต้องการ แยกตามช่วงพัก','Desired condition by break period')}</h3>
-        <p class="desc">${L('ช่วงที่แถบสีน้ำเงินเข้มยาวที่สุด คือช่วงที่ต้องการเครื่องปรับอากาศมากที่สุด',
-                            'The longest dark-blue bar marks the period with the strongest demand for air-conditioning.')}</p>
-        ${stackedCondition(rows)}
-      </div>
-
-      <div class="card">
-        <h3>${L('ความต้องการแยกตามแผนก','Demand by department')}</h3>
-        <p class="desc">${L('สีเข้ม = สัดส่วนผู้ต้องการสูง ใช้ดูว่าแต่ละแผนกต่างกันอย่างไร (ไม่ขึ้นกับตัวกรองด้านบน)',
-                            'Darker = higher share. Not affected by the filters above.')}</p>
-        ${heatmap()}
-      </div>
-
-      <div class="card p-table">
-        <h3>${L('ตารางสรุปทุกคำถาม','Full summary table')}</h3>
-        <p class="desc">${L('ตัวเลขปรับตามตัวกรองด้านบน','Counts reflect the filters above.')}</p>
-        ${tableHtml(rows)}
-      </div>`;
   }
 
   /* ==========================================================
      render
      ========================================================== */
   function render(){
-    // แถบเครื่องมือ
-    $('dash-tools').innerHTML = `
+    $('dash-tools').innerHTML=`
       <div class="langsw">
         <button class="${lang==='th'?'on':''}" onclick="DASH.setLang('th')">ไทย</button>
         <button class="${lang==='en'?'on':''}" onclick="DASH.setLang('en')">EN</button></div>
@@ -1278,40 +1276,38 @@ const DASH = (() => {
       <button class="mini" onclick="DASH.csvSummary()">CSV</button>
       <button class="mini" onclick="DASH.pdf()">PDF</button>
       <button class="mini ghost" onclick="DASH.askKey('xlsx')">&#128274; ${L('ข้อมูลดิบ','Raw')}</button>`;
-    $('dash-title').innerHTML = `${L('สรุปผลแบบสำรวจการใช้เวลาพัก','Break Time Usage — Summary')}
+    $('dash-title').innerHTML=`${L('สรุปผลแบบสำรวจการใช้เวลาพัก','Break Time Usage — Summary')}
       <span class="en">${L('Break Time Usage Survey','แบบสำรวจการใช้เวลาพักกลางวันและช่วงพัก')}</span>`;
-    $('dash-modes').innerHTML = `
-      <button class="mini ${mode==='exec'?'on':''}" onclick="DASH.setMode('exec')">${L('สรุปผู้บริหาร','Executive')}</button>
-      <button class="mini ${mode==='detail'?'on':''}" onclick="DASH.setMode('detail')">${L('รายละเอียดทั้งหมด','Full breakdown')}</button>`;
+    $('dash-modes').innerHTML=`
+      <button class="mini ${mode==='exec'?'on':''}" onclick="DASH.setMode('exec')">${L('สรุปสั้น','Summary')}</button>
+      <button class="mini ${mode==='detail'?'on':''}" onclick="DASH.setMode('detail')">${L('รายละเอียด','Details')}</button>`;
 
     if(!ROWS.length){
       $('dash-filters').classList.add('hide');
       paint(`<div class="dash-state"><div class="badge">&#128203;</div>
-        <h2>${L('ยังไม่มีผู้ตอบแบบสำรวจ','No responses yet')}</h2>
-        <p>${L('เมื่อมีคนส่งแบบสำรวจเข้ามา ข้อมูลสรุปจะแสดงที่นี่','Summary will appear here once responses arrive.')}</p></div>`);
+        <h2>${L('ยังไม่มีใครตอบแบบสำรวจ','No responses yet')}</h2>
+        <p>${L('เมื่อมีคนส่งแบบสำรวจเข้ามา สรุปผลจะขึ้นที่นี่','The summary will appear once responses arrive.')}</p></div>`);
       return;
     }
-
-    // ตัวกรอง (เฉพาะหน้ารายละเอียด)
     $('dash-filters').classList.toggle('hide', mode!=='detail');
     if(!$('f-dep').dataset.built){
       const fill=(el,list)=>el.innerHTML=`<option value="">${L('ทั้งหมด','All')}</option>`+
         list.map(v=>`<option value="${E(v)}">${E(V(v))}</option>`).join('');
       fill($('f-dep'),uniques('department')); fill($('f-wp'),uniques('workplace'));
-      $('f-dep').dataset.built='1';
-      $('f-dep').onchange=render; $('f-wp').onchange=render;
+      $('f-dep').dataset.built='1'; $('f-dep').onchange=render; $('f-wp').onchange=render;
     }
     $('lbl-dep').textContent=L('แผนก','Department');
     $('lbl-wp').textContent=L('พื้นที่ทำงาน','Work location');
 
     const rows=filtered();
-    $('fnote').innerHTML=L(`แสดง ${rows.length} จาก ${ROWS.length} คำตอบ`,`Showing ${rows.length} of ${ROWS.length}`);
+    $('fnote').textContent=L(`กำลังดู ${rows.length} คน จากทั้งหมด ${ROWS.length} คน`,
+                             `Showing ${rows.length} of ${ROWS.length}`);
 
     if(rows.length && rows.length<MIN_GROUP){
       paint(`<div class="dash-state"><div class="badge">&#128274;</div>
-        <h2>${L('กลุ่มนี้มีผู้ตอบน้อยเกินไป','Group too small to display')}</h2>
-        <p>${L(`ระบบไม่แสดงผลกลุ่มที่มีผู้ตอบน้อยกว่า ${MIN_GROUP} คน เพื่อไม่ให้ระบุตัวผู้ตอบได้ กรุณาเลือกตัวกรองที่กว้างขึ้น`,
-                `Groups with fewer than ${MIN_GROUP} responses are hidden to protect anonymity. Please widen the filter.`)}</p></div>`);
+        <h2>${L('กลุ่มนี้คนน้อยเกินไป','Group too small')}</h2>
+        <p>${L(`กลุ่มที่มีผู้ตอบน้อยกว่า ${MIN_GROUP} คนจะไม่แสดง เพราะอาจเดาได้ว่าใครตอบอะไร กรุณาเลือกตัวกรองที่กว้างขึ้น`,
+                `Groups under ${MIN_GROUP} responses are hidden to protect anonymity. Please widen the filter.`)}</p></div>`);
       return;
     }
     paint(mode==='exec' ? execView(ROWS) : detailView(rows));
@@ -1322,42 +1318,41 @@ const DASH = (() => {
   /* ==========================================================
      EXPORT
      ========================================================== */
-  const stamp = () => new Date().toISOString().slice(0,10);
+  const stamp=()=>new Date().toISOString().slice(0,10);
   function download(blob,name){
     const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=name;
     document.body.appendChild(a); a.click();
     setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},1000);
   }
-  const toCSV = aoa => '\uFEFF'+aoa.map(r=>r.map(c=>{
+  const toCSV=aoa=>'\uFEFF'+aoa.map(r=>r.map(c=>{
     const s=c===null||c===undefined?'':String(c);
     return /[",\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;
   }).join(',')).join('\r\n');
 
   function summaryAOA(){
     const rows=filtered();
-    const aoa=[[L('หัวข้อ','Item'),L('คำตอบ','Answer'),L('จำนวน','Count'),L('สัดส่วน','Share')]];
+    const aoa=[[L('หัวข้อ','Item'),L('คำตอบ','Answer'),L('จำนวนคน','People')]];
     let grp='';
-    summaryRows(rows).forEach(d=>{ if(d.grp){grp=d.grp;return;} aoa.push([grp,d.v,d.n,d.pct+'%']); });
+    summaryRows(rows).forEach(d=>{ if(d.grp){grp=d.grp;return;} aoa.push([grp,d.v,d.n]); });
     return aoa;
   }
   function gapAOA(){
     const rows=filtered();
-    return [[L('หมวด','Category'),L('คำตอบ','Answer'),L('ปัจจุบัน %','Now %'),L('ต้องการ %','Want %'),L('ช่องว่าง','Gap')],
-      ...gapList(rows).map(g=>[g.field[lang],g.value,g.now,g.want,g.gap])];
+    return [[L('หมวด','Category'),L('คำตอบ','Answer'),L('ตอนนี้ได้ (คน)','Have now'),L('อยากได้ (คน)','Want'),L('ขาดอยู่ (คน)','Shortfall')],
+      ...allItems(rows).sort((a,b)=>b.gap-a.gap).map(o=>[o.field[lang],o.value,o.now,o.want,o.gap])];
   }
-  const deidentAOA = () => [HEADERS.slice(), ...filtered().map(r=>r.slice())];
+  const deidentAOA=()=>[HEADERS.slice(),...filtered().map(r=>r.slice())];
 
-  const csvSummary  = () => download(new Blob([toCSV(summaryAOA())],{type:'text/csv;charset=utf-8'}),`break-survey-summary-${stamp()}.csv`);
-  const xlsxSummary = () => download(makeXlsx([
-      {name:'Summary',aoa:summaryAOA()},{name:'Gap',aoa:gapAOA()},{name:'Data',aoa:deidentAOA()}
-    ]),`break-survey-summary-${stamp()}.xlsx`);
-  const pdf = () => setTimeout(()=>window.print(),60);
+  const csvSummary =()=>download(new Blob([toCSV(summaryAOA())],{type:'text/csv;charset=utf-8'}),`break-survey-summary-${stamp()}.csv`);
+  const xlsxSummary=()=>download(makeXlsx([{name:'Summary',aoa:summaryAOA()},{name:'Gap',aoa:gapAOA()},{name:'Data',aoa:deidentAOA()}]),
+                                 `break-survey-summary-${stamp()}.xlsx`);
+  const pdf=()=>setTimeout(()=>window.print(),60);
 
   function askKey(fmt){
     const m=document.createElement('div'); m.className='modal';
     m.innerHTML=`<div class="modal-box">
       <h3>${L('ดาวน์โหลดข้อมูลดิบ','Raw data export')}</h3>
-      <p>${L('ไฟล์นี้มีชื่อ-นามสกุลและรหัสพนักงานของผู้ตอบทุกคน จำกัดเฉพาะผู้ดูแลระบบ',
+      <p>${L('ไฟล์นี้มีชื่อและรหัสพนักงานของผู้ตอบทุกคน จำกัดเฉพาะผู้ดูแลระบบ',
              'This file contains the name and employee ID of every respondent. Administrators only.')}</p>
       <input type="text" id="admin-key" placeholder="Admin key" autocomplete="off">
       <div class="row"><button class="mini" id="key-go">${L('ดาวน์โหลด','Download')}</button>
@@ -1381,13 +1376,12 @@ const DASH = (() => {
         else download(makeXlsx([{name:'Raw',aoa}]),`break-survey-raw-${stamp()}.xlsx`);
         close();
       }catch(err){
-        msg.textContent = String(err.message)==='unauthorized'
-          ? L('รหัสไม่ถูกต้อง','Incorrect key') : L('ดาวน์โหลดไม่สำเร็จ','Download failed');
+        msg.textContent=String(err.message)==='unauthorized'?L('รหัสไม่ถูกต้อง','Incorrect key'):L('ดาวน์โหลดไม่สำเร็จ','Download failed');
       }
     };
   }
 
-  /* ---------- XLSX เขียนเอง (ZIP ไม่บีบอัด) ---------- */
+  /* ---------- XLSX เขียนเอง ---------- */
   const CRC=(()=>{const t=[];for(let n=0;n<256;n++){let c=n;for(let k=0;k<8;k++)c=c&1?0xEDB88320^(c>>>1):c>>>1;t[n]=c>>>0;}return t;})();
   const crc32=u8=>{let c=0xFFFFFFFF;for(let i=0;i<u8.length;i++)c=CRC[(c^u8[i])&0xFF]^(c>>>8);return (c^0xFFFFFFFF)>>>0;};
   const enc=s=>new TextEncoder().encode(s);
