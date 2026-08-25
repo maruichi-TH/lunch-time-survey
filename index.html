@@ -409,6 +409,33 @@ table.dept td b{font:700 .95rem Inter,sans-serif;color:var(--brand-700)}
 table.dept td span{color:var(--muted-2);font-size:.74rem}
 table.dept td.muted{background:#f7fafd;color:var(--muted-2);font-size:.78rem;text-align:left;padding-left:14px}
 
+/* ---- ป้ายคั่นหมวด ---- */
+.focus-tag{display:inline-block;background:var(--brand);color:#fff;border-radius:999px;
+  padding:6px 16px;font-size:.78rem;font-weight:700;margin:6px 0 12px}
+.focus-tag.sub{background:var(--line);color:var(--muted);margin-top:22px}
+
+/* ---- แถบสัดส่วน % ---- */
+.pct-list{display:flex;flex-direction:column;gap:14px}
+.pct{display:grid;gap:5px 14px;grid-template-columns:1fr}
+@media(min-width:720px){.pct{grid-template-columns:minmax(140px,32%) 1fr;align-items:center}}
+.pct-name{font-size:.85rem;font-weight:600;line-height:1.35}
+.pct-name em{display:block;font-style:normal;font-size:.68rem;color:var(--muted-2);font-weight:400}
+.pct-bars{display:flex;flex-direction:column;gap:5px}
+.pct-row{display:grid;grid-template-columns:52px 1fr 44px;gap:9px;align-items:center}
+.pct-row i{font-style:normal;font-size:.7rem;font-weight:600;color:var(--muted)}
+.pct-row b{font:700 .82rem Inter,sans-serif;text-align:right;font-variant-numeric:tabular-nums}
+.tiny{font-size:.72rem;color:var(--muted-2);margin:14px 0 0;line-height:1.6}
+
+/* ---- ตารางแยกช่วงพัก ---- */
+table.mx{width:100%;border-collapse:separate;border-spacing:0 5px;font-size:.8rem;min-width:560px}
+table.mx th{font-size:.71rem;font-weight:600;color:var(--muted);padding:4px 6px;text-align:center;line-height:1.35}
+table.mx th.rowh{text-align:left;font-size:.81rem;color:var(--ink);white-space:nowrap;padding-right:12px}
+table.mx td{text-align:center;padding:9px 6px;background:var(--line-2);border-radius:8px}
+table.mx td b{display:block;font:700 1.02rem Inter,sans-serif;color:var(--ink)}
+table.mx td span{display:block;font-size:.68rem;color:var(--muted-2);margin-top:1px}
+table.mx td.hot{background:var(--brand-100)}
+table.mx td.hot b{color:var(--brand-700)}
+
 /* ==================== print ==================== */
 @media print{
   @page{size:A4;margin:12mm}
@@ -952,9 +979,13 @@ window.addEventListener('hashchange', routeFromHash);
    DASHBOARD — ฉบับอ่านง่าย
    ตัวเลขทุกตัวในหน้านี้เป็น "จำนวนคน" ไม่ใช่เปอร์เซ็นต์
    ========================================================== */
+/* ==========================================================
+   DASHBOARD — ฉบับอ่านง่าย
+   ตัวเลขทุกตัวในหน้านี้เป็น "จำนวนคน" ไม่ใช่เปอร์เซ็นต์
+   ========================================================== */
 const DASH = (() => {
   const HEADCOUNT = 70;     // จำนวนพนักงานทั้งหมด
-  const MIN_GROUP = 1;      // แสดงผลแม้มีผู้ตอบคนเดียว (บางแผนกมีคนเดียว)
+  const MIN_GROUP = 5;      // กลุ่มเล็กกว่านี้ไม่แสดง กันระบุตัวบุคคล
   const ENOUGH    = 25;     // ผู้ตอบน้อยกว่านี้ ขึ้นคำเตือนว่าตัวเลขยังไม่นิ่ง
 
   let HEADERS = [], ROWS = [], loaded = false;
@@ -1046,6 +1077,51 @@ const DASH = (() => {
   const uniques = k => [...new Set(ROWS.map(r=>cell(r,k)).filter(Boolean))].sort();
 
   /* ---------- ชิ้นส่วนกราฟ ---------- */
+  /** สัดส่วน % จากคำตอบทั้งหมดในฟิลด์นั้น (รวมทุกช่วงพัก) รวมกันได้ 100% */
+  function shareList(rows,phase,field){
+    const m=new Map(); let tot=0;
+    PERIODS.forEach(p=>rows.forEach(r=>{
+      const v=cell(r,`${phase}_${p.k}_${field}`); if(v){ m.set(v,(m.get(v)||0)+1); tot++; }
+    }));
+    return {tot, list:[...m.entries()].map(([v,c])=>({v,c,pct:tot?Math.round(c/tot*100):0}))
+      .sort((a,b)=>b.c-a.c)};
+  }
+  /** แถบ % คู่กัน ตอนนี้ / อยากได้ ใช้กับหมวดที่ดูแค่สัดส่วนพอ */
+  function pctRows(rows,field){
+    const now=shareList(rows,'now',field), want=shareList(rows,'want',field);
+    const keys=[...new Set([...now.list.map(x=>x.v),...want.list.map(x=>x.v)])];
+    const g=(o,k)=>o.list.find(x=>x.v===k)||{pct:0,c:0};
+    keys.sort((a,b)=>g(want,b).pct-g(want,a).pct);
+    if(!keys.length) return `<p class="desc">${L('ยังไม่มีข้อมูล','No data')}</p>`;
+    return `<div class="pct-list">${keys.map(k=>{
+      const a=g(now,k), b=g(want,k);
+      return `<div class="pct"><div class="pct-name">${E(V(k))}<em>${E(V2(k))}</em></div>
+        <div class="pct-bars">
+          <div class="pct-row"><i>${L('ตอนนี้','Now')}</i><div class="track"><div class="fill" style="width:${a.pct}%"></div></div><b>${a.pct}%</b></div>
+          <div class="pct-row"><i>${L('อยากได้','Want')}</i><div class="track"><div class="fill w" style="width:${b.pct}%"></div></div><b>${b.pct}%</b></div>
+        </div></div>`;
+    }).join('')}</div>
+    <p class="tiny">${L(`คิดจากคำตอบทั้งหมด ${now.tot} คำตอบ (ผู้ตอบ 1 คนตอบ ${PERIODS.length} ช่วงพัก) รวมกันได้ 100%`,
+                        `Based on ${now.tot} answers — each person answers ${PERIODS.length} times. Adds up to 100%.`)}</p>`;
+  }
+  /** ตารางแยกช่วงพัก: แต่ละช่องบอกจำนวนคนที่อยากได้ และตอนนี้ได้กี่คน */
+  function matrix(rows,field){
+    const want=shareList(rows,'want',field), now=shareList(rows,'now',field);
+    const opts=want.list.map(x=>x.v);
+    if(!opts.length) return `<p class="desc">${L('ยังไม่มีข้อมูล','No data')}</p>`;
+    const cnt=(p,phase,v)=>rows.filter(r=>cell(r,`${phase}_${p.k}_${field}`)===v).length;
+    const body=PERIODS.map(p=>`<tr><th class="rowh">${p[lang]}</th>${opts.map(v=>{
+      const w=cnt(p,'want',v), a=cnt(p,'now',v);
+      const hot=w>0 && w===Math.max(...opts.map(o=>cnt(p,'want',o)));
+      return `<td class="${hot?'hot':''}"><b>${w}</b><span>${L('ตอนนี้','now')} ${a}</span></td>`;
+    }).join('')}</tr>`).join('');
+    return `<div style="overflow-x:auto"><table class="mx">
+      <thead><tr><th class="rowh">${L('ช่วงพัก','Break period')}</th>
+      ${opts.map(v=>`<th>${E(V(v))}</th>`).join('')}</tr></thead><tbody>${body}</tbody></table></div>
+      <p class="tiny">${L('ตัวเลขใหญ่คือจำนวนคนที่อยากได้ในช่วงนั้น ตัวเลขเล็กคือจำนวนคนที่ได้อยู่แล้ว ช่องที่เน้นสีคือสิ่งที่คนอยากได้มากที่สุดของช่วงนั้น',
+                          'Large number = people who want it in that period. Small = people who already have it. Highlighted = most wanted in that period.')}</p>`;
+  }
+
   /** แถบคู่ ตอนนี้ / อยากได้ พร้อมประโยคสรุป */
   function pairBar(o,total){
     const w=n=>total?Math.round(n/total*100):0;
@@ -1090,7 +1166,10 @@ const DASH = (() => {
     const ac=findVal(rows,'condition',AC);
     const nap=findVal(rows,'activity',NAP);
 
-    const tops=allItems(rows).filter(o=>o.gap>0).sort((a,b)=>b.gap-a.gap).slice(0,3);
+    // เน้นเฉพาะลักษณะพื้นที่และสภาพแวดล้อม ซึ่งเป็นสิ่งที่ปรับปรุงได้ด้วยงบประมาณ
+    const FOCUS=['place_type','condition'];
+    const tops=allItems(rows).filter(o=>o.gap>0&&FOCUS.includes(o.field.k))
+      .sort((a,b)=>b.gap-a.gap).slice(0,3);
     const acts=tops.map((o,i)=>`
       <div class="act ${i===1?'p2':i===2?'p3':''}">
         <div class="rank">${i+1}</div>
@@ -1133,8 +1212,8 @@ const DASH = (() => {
       </div>
 
       <h3 class="section-t">${L('3 เรื่องที่ควรทำก่อน','Top 3 things to fix first')}</h3>
-      <p class="section-d">${L('เรียงจากเรื่องที่คนอยากได้มากกว่าที่มีอยู่จริงมากที่สุด ตัวเลขทั้งหมดคือจำนวนคน',
-                               'Ranked by the biggest shortfall. All figures are numbers of people.')}</p>
+      <p class="section-d">${L('เฉพาะเรื่องลักษณะพื้นที่ (โต๊ะ เก้าอี้ ที่เอนตัว) และสภาพแวดล้อม (แอร์ พัดลม) ซึ่งเป็นสิ่งที่ปรับปรุงได้โดยตรง ตัวเลขทั้งหมดคือจำนวนคน',
+                               'Limited to seating and cooling — the things you can actually change. All figures are numbers of people.')}</p>
       <div class="acts">${acts}</div>
 
       <div class="card" style="margin-top:14px;text-align:center">
@@ -1151,34 +1230,22 @@ const DASH = (() => {
     const outNow=peopleWith(rows,'now','where',OUT), outWant=peopleWith(rows,'want','where',OUT);
     const ac=findVal(rows,'condition',AC), tbl=findVal(rows,'place_type',TBL);
 
-    // อยากได้อะไรมากที่สุด
-    const wants=allItems(rows).sort((a,b)=>b.want-a.want).slice(0,8);
-    // ช่องว่างมากที่สุด
-    const gaps=allItems(rows).filter(o=>o.gap!==0).sort((a,b)=>Math.abs(b.gap)-Math.abs(a.gap)).slice(0,8);
+    const pairs=f=>{
+      const list=itemStats(rows,f).map(o=>({...o,gap:o.want-o.now})).sort((x,y)=>y.want-x.want);
+      return `<div class="pb-list">${list.map(o=>pairBar(o,n)).join('')}</div>`;
+    };
 
-    // แต่ละช่วงพัก อยากได้ความเย็นแบบไหน
-    const periodRows=PERIODS.map(p=>{
-      const c=counts(rows,`want_${p.k}_condition`);
-      const tot=c.reduce((a,b)=>a+b[1],0); if(!tot) return '';
-      const acN=c.filter(([x])=>x.indexOf(AC)===0).reduce((a,b)=>a+b[1],0);
-      return `<div class="prow"><div class="pname">${p[lang]}</div>
-        <div class="track"><div class="fill" style="width:${acN/tot*100}%"></div></div>
-        <b>${acN}<span>/${tot}</span></b></div>`;
-    }).join('');
-
-    // แผนก
+    // แผนก — เน้นสองหมวดหลัก
     const cols=[
       {th:'อยากได้แอร์',en:'Air-con',f:'condition',p:AC},
       {th:'อยากได้โต๊ะเก้าอี้',en:'Table+chairs',f:'place_type',p:TBL},
-      {th:'อยากมีที่เอนตัว',en:'Nap space',f:'activity',p:NAP},
-      {th:'ยังอยากออกไปข้างนอก',en:'Go outside',f:'where',p:OUT}
+      {th:'อยากมีที่เอนตัว',en:'Nap space',f:'activity',p:NAP}
     ];
     const deptRows=uniques('department').map(d=>{
       const rs=ROWS.filter(r=>cell(r,'department')===d);
       if(rs.length<MIN_GROUP)
-        return `<tr><th class="rowh">${E(V(d))}</th><td colspan="4" class="muted">${L(
-          `มีผู้ตอบ ${rs.length} คน — น้อยเกินไป ไม่แสดงเพื่อไม่ให้เดาได้ว่าใครตอบ`,
-          `${rs.length} responses — too few to show`)}</td><td class="muted">${rs.length}</td></tr>`;
+        return `<tr><th class="rowh">${E(V(d))}</th><td colspan="${cols.length}" class="muted">${L(
+          `มีผู้ตอบ ${rs.length} คน`,`${rs.length} responses`)}</td><td class="muted">${rs.length}</td></tr>`;
       return `<tr><th class="rowh">${E(V(d))}</th>${cols.map(c=>{
         const v=peopleWith(rs,'want',c.f,c.p);
         return `<td><b>${v}</b><span>/${rs.length}</span></td>`;
@@ -1190,46 +1257,70 @@ const DASH = (() => {
       <div class="kpis">
         <div class="kpi"><div class="t">${L('ตอบแบบสำรวจแล้ว','Responded')}</div>
           <b style="color:var(--brand)">${n}</b><div class="d flat">${L(`จาก ${HEADCOUNT} คน`,`of ${HEADCOUNT}`)}</div></div>
-        <div class="kpi"><div class="t">${L('ออกไปพักนอกบริษัท','Leave the premises')}</div>
-          <b style="color:#c07f00">${outNow} <span style="font-size:.9rem;color:var(--muted-2)">&rarr;</span> ${outWant}</b>
-          <div class="d up">${L(`ดึงกลับได้ ${Math.max(0,outNow-outWant)} คน`,`${Math.max(0,outNow-outWant)} could return`)}</div></div>
         <div class="kpi"><div class="t">${L('อยากพักในที่มีแอร์','Want air-conditioning')}</div>
           <b style="color:var(--warn)">${ac.want}</b><div class="d dn">${L(`ตอนนี้ได้ ${ac.now} คน`,`${ac.now} have it now`)}</div></div>
         <div class="kpi"><div class="t">${L('อยากมีโต๊ะและเก้าอี้','Want a table and chairs')}</div>
           <b style="color:var(--warn)">${tbl.want}</b><div class="d dn">${L(`ตอนนี้ได้ ${tbl.now} คน`,`${tbl.now} have it now`)}</div></div>
+        <div class="kpi"><div class="t">${L('ออกไปพักนอกบริษัท','Leave the premises')}</div>
+          <b style="color:#c07f00">${outNow} <span style="font-size:.9rem;color:var(--muted-2)">&rarr;</span> ${outWant}</b>
+          <div class="d up">${L(`ดึงกลับได้ ${Math.max(0,outNow-outWant)} คน`,`${Math.max(0,outNow-outWant)} could return`)}</div></div>
+      </div>
+
+      <div class="focus-tag">${L('สองหัวข้อหลัก — สิ่งที่ปรับปรุงได้ด้วยงบประมาณ','The two areas you can actually change')}</div>
+
+      <div class="card">
+        <h3>${L('1. สภาพแวดล้อม — แอร์ พัดลม หรือไม่มีเลย','1. Cooling — air-con, fan, or neither')}</h3>
+        <p class="desc">${L('แถบน้ำเงินคือจำนวนคนที่ได้อยู่แล้ว แถบส้มคือจำนวนคนที่อยากได้ ถ้าส้มยาวกว่าแปลว่ายังขาด',
+                            'Blue = people who already have it. Orange = people who want it.')}</p>
+        ${pairs('condition')}
       </div>
 
       <div class="card">
-        <h3>${L('พนักงานอยากได้อะไรมากที่สุด','What people want most')}</h3>
-        <p class="desc">${L(`นับจำนวนคนที่ตอบว่าอยากได้ จากผู้ตอบทั้งหมด ${n} คน`,`Number of people who asked for it, out of ${n} respondents`)}</p>
-        ${simpleBar(wants.map(o=>[o.value,o.want]),n)}
+        <h3>${L('สภาพแวดล้อม แยกตามช่วงพัก','Cooling — by break period')}</h3>
+        <p class="desc">${L('ใช้ดูว่าควรเพิ่มความเย็นในช่วงเวลาไหนก่อน','Use this to decide which period to tackle first.')}</p>
+        ${matrix(rows,'condition')}
       </div>
 
       <div class="card">
-        <h3>${L('เทียบกัน: ตอนนี้ได้ กับ อยากได้','Side by side: have now vs want')}</h3>
-        <p class="desc">${L('แถบสีน้ำเงินคือจำนวนคนที่ได้อยู่แล้ว แถบสีส้มคือจำนวนคนที่อยากได้ ถ้าส้มยาวกว่าน้ำเงินแปลว่ายังขาด',
-                            'Blue = people who already have it. Orange = people who want it. Orange longer than blue means a shortfall.')}</p>
-        <div class="pb-list">${gaps.map(o=>pairBar(o,n)).join('')}</div>
+        <h3>${L('2. ลักษณะพื้นที่ — โต๊ะ เก้าอี้ ที่เอนตัว','2. Seating — tables, chairs, floor space')}</h3>
+        <p class="desc">${L('บอกว่าควรซื้อเฟอร์นิเจอร์แบบไหน และควรมีที่ให้เอนตัวหรือไม่',
+                            'Tells you what furniture to buy and whether people need somewhere to lie down.')}</p>
+        ${pairs('place_type')}
       </div>
 
       <div class="card">
-        <h3>${L('ช่วงพักไหนอยากได้แอร์มากที่สุด','Which break needs cooling most')}</h3>
-        <p class="desc">${L('ตัวเลขคือจำนวนคนที่อยากพักในที่มีแอร์ ในช่วงพักนั้น','People wanting an air-conditioned spot in each break')}</p>
-        <div class="plist">${periodRows}</div>
+        <h3>${L('ลักษณะพื้นที่ แยกตามช่วงพัก','Seating — by break period')}</h3>
+        <p class="desc">${L('ช่วงพักสั้นกับพักกลางวันอาจต้องการเฟอร์นิเจอร์คนละแบบ',
+                            'Short breaks and lunch may call for different furniture.')}</p>
+        ${matrix(rows,'place_type')}
       </div>
 
       <div class="card">
         <h3>${L('แยกตามแผนก','By department')}</h3>
-        <p class="desc">${L('ตัวเลขคือ จำนวนคนที่อยากได้ / จำนวนผู้ตอบในแผนกนั้น (ไม่ขึ้นกับตัวกรองด้านบน)',
+        <p class="desc">${L('จำนวนคนที่อยากได้ / จำนวนผู้ตอบในแผนกนั้น (ไม่ขึ้นกับตัวกรองด้านบน)',
                             'People wanting it / respondents in that department. Not affected by the filters above.')}</p>
         <div style="overflow-x:auto"><table class="dept">
           <thead><tr><th class="rowh">${L('แผนก','Department')}</th>${cols.map(c=>`<th>${c[lang]}</th>`).join('')}<th>${L('ผู้ตอบ','n')}</th></tr></thead>
           <tbody>${deptRows}</tbody></table></div>
       </div>
 
+      <div class="focus-tag sub">${L('ข้อมูลประกอบ — ดูสัดส่วนพอ','Background — proportions only')}</div>
+
+      <div class="card">
+        <h3>${L('พักที่ไหน','Where people go')}</h3>
+        <p class="desc">${L('สัดส่วนของคำตอบ ไม่ใช่จำนวนคน','Share of answers, not a headcount.')}</p>
+        ${pctRows(rows,'where')}
+      </div>
+
+      <div class="card">
+        <h3>${L('ทำอะไรตอนพัก','What people do')}</h3>
+        <p class="desc">${L('สัดส่วนของคำตอบ ไม่ใช่จำนวนคน','Share of answers, not a headcount.')}</p>
+        ${pctRows(rows,'activity')}
+      </div>
+
       <div class="card p-table">
         <h3>${L('ตารางคำตอบทั้งหมด','Every answer, counted')}</h3>
-        <p class="desc">${L('สำหรับคนที่อยากดูตัวเลขดิบ ปรับตามตัวกรองด้านบน','Raw counts for every question. Reflects the filters above.')}</p>
+        <p class="desc">${L('สำหรับคนที่อยากดูตัวเลขดิบ ปรับตามตัวกรองด้านบน','Raw counts. Reflects the filters above.')}</p>
         ${tableHtml(rows)}
       </div>`;
   }
