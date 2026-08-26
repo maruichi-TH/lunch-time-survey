@@ -1053,7 +1053,7 @@ const DASH = (() => {
     <p class="tiny">${L(`คิดจากคำตอบทั้งหมด ${now.tot} คำตอบ (ผู้ตอบ 1 คนตอบ ${PERIODS.length} ช่วงพัก) รวมกันได้ 100%`,
                         `Based on ${now.tot} answers — each person answers ${PERIODS.length} times. Adds up to 100%.`)}</p>`;
   }
-  /** ตารางแยกช่วงพัก: แต่ละช่องบอกจำนวนคนที่อยากได้ และตอนนี้ได้กี่คน */
+  /** ตารางแยกช่วงพัก: แต่ละช่องบอกจำนวนคนที่มีความต้องการ และจำนวนคนในปัจจุบัน */
   function matrix(rows,field){
     const want=shareList(rows,'want',field), now=shareList(rows,'now',field);
     const opts=want.list.map(x=>x.v);
@@ -1131,14 +1131,14 @@ const DASH = (() => {
         <div>
           <h4>${E(V(o.value))}</h4>
           <p>${L(
-            `ตอนนี้มี <b>${o.now} คน</b> ที่ได้แบบนี้ แต่มี <b>${o.want} คน</b> ที่อยากได้ — ยังขาดอยู่ <b>${o.gap} คน</b>`,
-            `<b>${o.now}</b> have this today, but <b>${o.want}</b> want it — a shortfall of <b>${o.gap}</b>.`)}</p>
+            `ปัจจุบันมี <b>${o.now} คน</b> ที่ได้แบบนี้ ขณะที่มีความต้องการอยู่ <b>${o.want} คน</b>`,
+            `<b>${o.now}</b> have this today, while <b>${o.want}</b> want it.`)}</p>
           <div class="ev">${L('หมวด','Category')}: ${o.field[lang]}</div>
         </div>
         <div class="gapbox">
-          <div class="gaprow"><i>${L('ตอนนี้ได้','Have')}</i><div class="track"><div class="fill" style="width:${n?o.now/n*100:0}%"></div></div><span>${o.now}</span></div>
-          <div class="gaprow"><i>${L('อยากได้','Want')}</i><div class="track"><div class="fill w" style="width:${n?o.want/n*100:0}%"></div></div><span>${o.want}</span></div>
-          <div class="impact">${L(`ขาดอยู่ ${o.gap} คน`,`Short by ${o.gap}`)}</div>
+          <div class="gaprow"><i>${L('ปัจจุบัน','Current')}</i><div class="track"><div class="fill" style="width:${n?o.now/n*100:0}%"></div></div><span>${o.now}</span></div>
+          <div class="gaprow"><i>${L('ความต้องการ','Desired')}</i><div class="track"><div class="fill w" style="width:${n?o.want/n*100:0}%"></div></div><span>${o.want}</span></div>
+          <div class="impact">${L(`มีความต้องการอยู่ ${o.want} คน`,`${o.want} want this`)}</div>
         </div></div>`).join('')
       || `<div class="card"><p class="desc">${L('ยังไม่พบความต้องการที่ชัดเจน','No clear demand yet')}</p></div>`;
 
@@ -1199,7 +1199,7 @@ const DASH = (() => {
           <b style="color:var(--warn)">${findVal(rows,'activity',NAP).want}</b><div class="d flat">${L('คน','people')}</div></div>
       </div>
 
-      <div class="focus-tag">${L('สองหัวข้อหลัก — สิ่งที่ปรับปรุงได้ด้วยงบประมาณ','The two areas you can actually change')}</div>
+      <div class="focus-tag">${L('ผลวิเคราะห์หลัก · สภาพแวดล้อมและลักษณะพื้นที่','Main analysis · cooling and seating')}</div>
 
       <div class="card">
         <h3>${L('1. สภาพแวดล้อม','1. Cooling')}</h3>
@@ -1223,17 +1223,15 @@ const DASH = (() => {
         ${matrix(rows,'place_type')}
       </div>
 
-      <div class="focus-tag sub">${L('ข้อมูลประกอบ — ดูสัดส่วนพอ','Background — proportions only')}</div>
+      <div class="focus-tag sub">${L('ข้อมูลพื้นฐาน · พฤติกรรมการใช้เวลาพักในปัจจุบัน','Background · how breaks are used today')}</div>
 
       <div class="card">
         <h3>${L('พักที่ไหน','Where people go')}</h3>
-        <p class="desc">${L('สัดส่วนของคำตอบ ไม่ใช่จำนวนคน','Share of answers, not a headcount.')}</p>
         ${pctRows(rows,'where')}
       </div>
 
       <div class="card">
         <h3>${L('ทำอะไรตอนพัก','What people do')}</h3>
-        <p class="desc">${L('สัดส่วนของคำตอบ ไม่ใช่จำนวนคน','Share of answers, not a headcount.')}</p>
         ${pctRows(rows,'activity')}
       </div>
 
@@ -1252,12 +1250,12 @@ const DASH = (() => {
     push(L('พื้นที่ทำงานหลัก','Primary work location'),'workplace');
     PERIODS.forEach(p=>{
       if(p.k==='meal'){
-        push(`[${L('ตอนนี้','Now')}] ${p[lang]} — ${L('กินข้าวกลางวันไหม','Eats lunch')}`,'now_meal_eat');
-        push(`[${L('อยากได้','Want')}] ${p[lang]} — ${L('กินข้าวกลางวันไหม','Eats lunch')}`,'want_meal_eat');
+        push(`[${L('ปัจจุบัน','Current')}] ${p[lang]} — ${L('กินข้าวกลางวันไหม','Eats lunch')}`,'now_meal_eat');
+        push(`[${L('ความต้องการ','Desired')}] ${p[lang]} — ${L('กินข้าวกลางวันไหม','Eats lunch')}`,'want_meal_eat');
       }
       FIELDS.forEach(f=>{
-        push(`[${L('ตอนนี้','Now')}] ${p[lang]} — ${f[lang]}`,`now_${p.k}_${f.k}`);
-        push(`[${L('อยากได้','Want')}] ${p[lang]} — ${f[lang]}`,`want_${p.k}_${f.k}`);
+        push(`[${L('ปัจจุบัน','Current')}] ${p[lang]} — ${f[lang]}`,`now_${p.k}_${f.k}`);
+        push(`[${L('ความต้องการ','Desired')}] ${p[lang]} — ${f[lang]}`,`want_${p.k}_${f.k}`);
       });
     });
     return out;
@@ -1348,7 +1346,7 @@ const DASH = (() => {
   }
   function gapAOA(){
     const rows=filtered();
-    return [[L('หมวด','Category'),L('คำตอบ','Answer'),L('ตอนนี้ได้ (คน)','Have now'),L('อยากได้ (คน)','Want'),L('ขาดอยู่ (คน)','Shortfall')],
+    return [[L('หมวด','Category'),L('คำตอบ','Answer'),L('ปัจจุบัน (คน)','Current'),L('ความต้องการ (คน)','Desired'),L('ส่วนต่าง (คน)','Difference')],
       ...allItems(rows).sort((a,b)=>b.gap-a.gap).map(o=>[o.field[lang],o.value,o.now,o.want,o.gap])];
   }
   const deidentAOA=()=>[HEADERS.slice(),...filtered().map(r=>r.slice())];
