@@ -135,6 +135,9 @@ h1,h2,h3,h4{margin:0;letter-spacing:-.005em}
 .opt input:checked~.dot::after{transform:scale(1)}
 .opt:has(input:checked){border-color:var(--brand);background:var(--brand-50);box-shadow:var(--sh-1)}
 .opt input:focus-visible~.dot{box-shadow:0 0 0 4px var(--brand-100)}
+.dot.box{border-radius:6px}
+.dot.box::after{width:11px;height:11px;border-radius:3px;
+  background:var(--brand) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2.5 6.2l2.3 2.3 4.7-4.9' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center/10px no-repeat}
 .lbl{font-size:.92rem;line-height:1.45;font-weight:500}
 .lbl .en{font-size:.75rem;font-weight:400}
 .field{padding-left:47px;margin-top:12px}
@@ -478,7 +481,7 @@ table.sum tr.grp td{background:#f7fafd;font-weight:700}
     <button id="prev" type="button" class="btn btn-ghost invis">ย้อนกลับ<span class="en">Back</span></button>
     <span class="count" id="count"></span>
     <button id="next" type="button" class="btn btn-primary">ถัดไป<span class="en">Next</span></button>
-    <button id="send" type="submit" class="btn btn-primary hide">ส่งแบบสำรวจ<span class="en">Send survey</span></button>
+    <button id="send" type="submit" class="btn btn-primary hide">ส่งแบบสอบถาม<span class="en">Submit</span></button>
   </nav>
 </form>
 
@@ -584,24 +587,25 @@ const PLACEHOLDER= 'พิมพ์คำตอบของคุณ / Type your
 
 const PARTS = [
   {n:1, key:'now_meal',        kind:'meal', future:false, title:T('พักกลางวัน: ช่วงรับประทานอาหาร','Lunch Break: Mealtime')},
-  {n:2, key:'now_afterlunch',  kind:'rest', future:false, noEatAct:true, title:T('พักกลางวัน: ช่วงหลังรับประทานอาหาร','Lunch Break: The Period after Lunch')},
-  {n:3, key:'now_morning',     kind:'rest', future:false, title:T('พักช่วงเช้า 10:00 น.','Morning Break 10:00 AM')},
-  {n:4, key:'now_afternoon',   kind:'rest', future:false, title:T('พักช่วงบ่าย 15:00 น.','Afternoon Break at 3:00 PM')},
-  {n:5, key:'now_evening',     kind:'rest', future:false, skipAfterOut:true, title:T('พักก่อนเริ่มทำงานล่วงเวลา 17:00–17:20 น.','Evening break before starting overtime work 5:00 PM–5:20 PM')},
+  {n:2, key:'now_afterlunch', noOutside:true,  kind:'rest', future:false, noEatAct:true, title:T('พักกลางวัน: ช่วงหลังรับประทานอาหาร','Lunch Break: The Period after Lunch')},
+  {n:3, key:'now_morning', noOutside:true,     kind:'rest', future:false, title:T('พักช่วงเช้า 10:00 น.','Morning Break 10:00 AM')},
+  {n:4, key:'now_afternoon', noOutside:true,   kind:'rest', future:false, title:T('พักช่วงบ่าย 15:00 น.','Afternoon Break at 3:00 PM')},
+  {n:5, key:'now_evening',     kind:'rest', future:false, title:T('พักก่อนเริ่มทำงานล่วงเวลา 17:00–17:20 น.','Evening break before starting overtime work 5:00 PM–5:20 PM')},
   {n:6, key:'want_meal',       kind:'meal', future:true,  title:T('พักกลางวัน: ช่วงรับประทานอาหาร','Lunch Break: Mealtime')},
-  {n:7, key:'want_afterlunch', kind:'rest', future:true, noEatAct:true, title:T('พักกลางวัน: ช่วงหลังรับประทานอาหาร','Lunch Break: The Period after Lunch')},
-  {n:8, key:'want_morning',    kind:'rest', future:true,  title:T('พักช่วงเช้า 10:00 น.','Morning Break 10:00 AM')},
-  {n:9, key:'want_afternoon',  kind:'rest', future:true,  title:T('พักช่วงบ่าย 15:00 น.','Afternoon Break at 3:00 PM')},
-  {n:10,key:'want_evening',    kind:'rest', future:true,  skipAfterOut:true, title:T('พักก่อนเริ่มทำงานล่วงเวลา 17:00–17:20 น.','Evening break before starting overtime work 5:00 PM–5:20 PM')}
+  {n:7, key:'want_afterlunch', noOutside:true, kind:'rest', future:true, noEatAct:true, title:T('พักกลางวัน: ช่วงหลังรับประทานอาหาร','Lunch Break: The Period after Lunch')},
+  {n:8, key:'want_morning', noOutside:true,    kind:'rest', future:true,  title:T('พักช่วงเช้า 10:00 น.','Morning Break 10:00 AM')},
+  {n:9, key:'want_afternoon', noOutside:true,  kind:'rest', future:true,  title:T('พักช่วงบ่าย 15:00 น.','Afternoon Break at 3:00 PM')},
+  {n:10,key:'want_evening',    kind:'rest', future:true,  title:T('พักก่อนเริ่มทำงานล่วงเวลา 17:00–17:20 น.','Evening break before starting overtime work 5:00 PM–5:20 PM')}
 ];
 
 /* ==========================================================
    builders
    ========================================================== */
-function opt(name,o){
-  return `<label class="opt"><input type="radio" name="${name}" value="${esc(o.v)}"><span class="dot"></span><span class="lbl">${o.h}</span></label>`;
+const HINT_MULTI = T('เลือกได้มากกว่า 1 ข้อ','Choose all that apply');
+function opt(name,o,multi){
+  return `<label class="opt"><input type="${multi?'checkbox':'radio'}" name="${name}" value="${esc(o.v)}"><span class="dot${multi?' box':''}"></span><span class="lbl">${o.h}</span></label>`;
 }
-function group(num,q,name,choices){
+function group(num,q,name,choices,multi){
   const hasOther = choices.some(c=>c.v===OTHER.v);
   const otherWrap = hasOther
     ? `<div id="${name}-other-wrap" class="field hide"><label for="${name}-other">${SPECIFY.h}</label>
@@ -609,8 +613,8 @@ function group(num,q,name,choices){
     : '';
   return `<fieldset class="q">
     <div class="q-head">${num?`<span class="q-no">${num}</span>`:''}
-      <legend class="q-text">${q.h}<span class="q-hint">${esc(HINT.th)} &middot; ${esc(HINT.en)}</span></legend></div>
-    <div class="opts${choices.length>3?' two':''}">${choices.map(c=>opt(name,c)).join('')}</div>
+      <legend class="q-text">${q.h}<span class="q-hint">${multi?esc(HINT_MULTI.th)+' &middot; '+esc(HINT_MULTI.en):esc(HINT.th)+' &middot; '+esc(HINT.en)}</span></legend></div>
+    <div class="opts${choices.length>3?' two':''}">${choices.map(c=>opt(name,c,multi)).join('')}</div>
     ${otherWrap}</fieldset>`;
 }
 function freeText(num,q,name){
@@ -620,11 +624,14 @@ function freeText(num,q,name){
     <div class="field"><input id="${name}" name="${name}" type="text" maxlength="120" placeholder="${esc(PLACEHOLDER)}"></div>
   </fieldset>`;
 }
-function whereBlock(p,num,kind,future){
+function whereOpts(kind,noOut){
+  return noOut ? [B1,B2,OUTB] : [B1,B2,OUTB, kind==='meal'?OUT_EAT:OUT_REST];
+}
+function whereBlock(p,num,kind,future,noOut){
   const q = kind==='meal'
     ? (future?T('คุณต้องการรับประทานอาหารกลางวันที่ไหน','Where do you want to have lunch?'):T('คุณรับประทานอาหารกลางวันที่ไหน','Where do you have lunch?'))
     : (future?T('คุณต้องการพักที่ไหน','Where do you want to take a break?'):T('คุณพักที่ไหน','Where do you take a break?'));
-  return group(num,q,`${p}_where`,[B1,B2,OUTB,kind==='meal'?OUT_EAT:OUT_REST])
+  return group(num,q,`${p}_where`,whereOpts(kind,noOut))
        + `<div id="${p}-branch" class="branch hide"></div>`;
 }
 function buildPart(part){
@@ -639,22 +646,23 @@ function buildPart(part){
                                :T('คุณรับประทานอาหารกลางวันกับกี่คน','How many people do you have lunch with?'),
                `${p}_with`,PEOPLE);
     h += whereBlock(p,`${n}.3`,kind,future);
+    h += `<div id="${p}-after">`;
     h += group(`${n}.4`, future?T('คุณต้องการรับประทานอาหารในพื้นที่ลักษณะใด','What is the type of area where you want to eat?')
                                :T('คุณรับประทานอาหารในพื้นที่ลักษณะใด','What is the type of place where you eat?'),
                `${p}_place_type`,PLACE_TYPE);
     h += group(`${n}.5`, future?T('คุณต้องการรับประทานอาหารในสภาพแวดล้อมแบบใด','What is the type of condition where you want to eat?')
                                :T('คุณรับประทานอาหารในสภาพแวดล้อมแบบใด','What is the type of condition where you eat?'),
                `${p}_condition`,CONDITION);
-    h += `</div>`;
+    h += `</div></div>`;
   } else {
     h += group(`${n}.1`, future?T('คุณต้องการพักกับกี่คน','How many people do you want to take your break with?')
                                :T('คุณพักกับกี่คน','How many people do you take your break with?'),
                `${p}_with`,PEOPLE);
-    h += whereBlock(p,`${n}.2`,kind,future);
+    h += whereBlock(p,`${n}.2`,kind,future,part.noOutside);
     h += `<div id="${p}-after">`;
     h += group(`${n}.3`, future?T('คุณต้องการทำอะไรในช่วงพัก','What do you want to do?')
                                :T('คุณทำอะไรในช่วงพัก','What do you do?'),
-               `${p}_activities`, noEatAct?ACTIVITIES.filter(x=>x.v!==ACT_EAT.v):ACTIVITIES);
+               `${p}_activities`, noEatAct?ACTIVITIES.filter(x=>x.v!==ACT_EAT.v):ACTIVITIES, true);
     h += group(`${n}.4`, future?T('คุณต้องการพักในพื้นที่ลักษณะใด','What is the type of place where you want to take a break?')
                                :T('คุณพักในพื้นที่ลักษณะใด','What is the type of place where you take a break?'),
                `${p}_place_type`,PLACE_TYPE);
@@ -729,6 +737,7 @@ let page = 1;
 
 const shown  = x => !x.closest('.hide');
 const picked = n => [...form.querySelectorAll(`[name="${n}"]:checked`)].filter(shown)[0]?.value || '';
+const pickedAll = n => [...form.querySelectorAll(`[name="${n}"]:checked`)].filter(shown).map(x=>x.value);
 const val    = n => { const el=form.querySelector(`[name="${n}"]`); return el && shown(el) ? el.value.trim() : ''; };
 
 const eid = document.getElementById('eid');
@@ -753,10 +762,10 @@ function syncWhere(part){
   const base = part.kind==='meal' ? `${part.n}.3` : `${part.n}.2`;
   const where = picked(`${p}_where`);
   const br = document.getElementById(`${p}-branch`);
-  const list = [B1,B2,OUTB, part.kind==='meal'?OUT_EAT:OUT_REST];
+  const list = whereOpts(part.kind, part.noOutside);
   const idx = list.findIndex(o=>o.v===where);
   const after = document.getElementById(`${p}-after`);
-  if(after) after.classList.toggle('hide', part.skipAfterOut===true && idx===3);
+  if(after) after.classList.toggle('hide', idx===3);
   if(idx<0){ br.innerHTML=''; br.dataset.sel=''; br.classList.add('hide'); return; }
   br.classList.remove('hide');
   if(br.dataset.sel===where) return;
@@ -775,7 +784,7 @@ function syncAll(){
     }
     syncWhere(part);
   });
-  [...new Set([...form.querySelectorAll('input[type=radio]')].map(x=>x.name))].forEach(syncOther);
+  [...new Set([...form.querySelectorAll('input[type=radio],input[type=checkbox]')].map(x=>x.name))].forEach(syncOther);
 }
 form.addEventListener('change',()=>{ syncAll(); hideErr(); });
 
@@ -801,6 +810,8 @@ function validate(p){
     x.focus(); return false; }
   for(const n of new Set(inputs.filter(x=>x.type==='radio').map(x=>x.name))) if(!picked(n)){
     showErr(T('กรุณาเลือกคำตอบ 1 ข้อก่อนดำเนินการต่อ','Please select one answer before continuing.')); return false; }
+  for(const n of new Set(inputs.filter(x=>x.type==='checkbox').map(x=>x.name))) if(!pickedAll(n).length){
+    showErr(T('กรุณาเลือกอย่างน้อย 1 ข้อก่อนดำเนินการต่อ','Please select at least one option before continuing.')); return false; }
   return true;
 }
 function render(p){
@@ -830,6 +841,10 @@ stepEls.forEach(el=>el.onclick = ()=>{ const i=+el.dataset.i; if(i<page) render(
    payload → Google Sheet
    ========================================================== */
 function withOther(n){ const v=picked(n); return v===OTHER.v ? `${OTHER.v}: ${val(n+'_other')}` : v; }
+function multiWithOther(n){
+  const extra = val(n+'_other');
+  return pickedAll(n).map(v => v===OTHER.v && extra ? `${OTHER.v}: ${extra}` : v).join(' | ');
+}
 function buildRow(){
   const row = {
     submitted_at:new Date().toISOString(),
@@ -845,7 +860,7 @@ function buildRow(){
     row[`${p}_where`]        = picked(`${p}_where`);
     row[`${p}_where_detail`] = withOther(`${p}_where_detail`);
     row[`${p}_where_out`]    = val(`${p}_where_out`);
-    if(part.kind==='rest') row[`${p}_activity`] = withOther(`${p}_activities`);
+    if(part.kind==='rest') row[`${p}_activity`] = multiWithOther(`${p}_activities`);
     row[`${p}_place_type`]   = withOther(`${p}_place_type`);
     row[`${p}_condition`]    = withOther(`${p}_condition`);
   });
@@ -861,9 +876,34 @@ async function postRow(row){
   if(!d.ok) throw new Error(d.error||'server rejected');
   return d;
 }
+/* กล่องยืนยันก่อนส่ง */
+function confirmSubmit(){
+  return new Promise(resolve=>{
+    const m=document.createElement('div'); m.className='modal';
+    m.innerHTML=`<div class="modal-box">
+      <h3>ยืนยันการส่งแบบสอบถาม<span class="en">Submit your answers?</span></h3>
+      <p>เมื่อส่งแล้วจะไม่สามารถกลับมาแก้ไขคำตอบได้
+        <span class="en">Once submitted you will not be able to change your answers.</span></p>
+      <div class="row">
+        <button class="btn btn-primary" id="cf-yes" style="flex:1">ยืนยันการส่ง<span class="en">Yes, submit</span></button>
+        <button class="btn btn-ghost" id="cf-no" style="flex:1">ยังไม่ยืนยัน<span class="en">Not yet</span></button>
+      </div></div>`;
+    document.body.appendChild(m);
+    const close=v=>{ m.remove(); resolve(v); };
+    m.querySelector('#cf-yes').onclick=()=>close(true);
+    m.querySelector('#cf-no').onclick=()=>close(false);
+    m.onclick=e=>{ if(e.target===m) close(false); };
+    document.addEventListener('keydown',function esc(ev){
+      if(ev.key==='Escape'){ document.removeEventListener('keydown',esc); close(false); }
+    });
+    m.querySelector('#cf-yes').focus();
+  });
+}
+
 form.addEventListener('submit', async e=>{
   e.preventDefault();
   if(!validate(TOTAL)) return;
+  if(!await confirmSubmit()) return;
   const btn = document.getElementById('send'), row = buildRow();
   if(CONFIG.DEBUG){
     const d = document.getElementById('debug');
@@ -884,7 +924,7 @@ form.addEventListener('submit', async e=>{
   console.error(last);
   showErr(T('ส่งไม่สำเร็จ กรุณาตรวจสอบการเชื่อมต่อแล้วกดส่งอีกครั้ง','Could not send. Check your connection and press send again.'));
   btn.disabled = false;
-  btn.innerHTML = 'ส่งแบบสำรวจ<span class="en">Send survey</span>';
+  btn.innerHTML = 'ส่งแบบสอบถาม<span class="en">Submit</span>';
 });
 function done(){
   form.classList.add('hide');
@@ -977,8 +1017,10 @@ const DASH = (() => {
   /* ---------- อ่านข้อมูล ---------- */
   const col  = k => HEADERS.indexOf(k);
   const cell = (r,k) => { const i=col(k); return i===-1?'':(r[i]||''); };
+  /** คำตอบหลายข้อถูกเก็บเป็น "A | B" — แตกออกเป็นรายการเสมอ */
+  const cellList = (r,k) => String(cell(r,k)).split(' | ').map(s=>s.trim()).filter(Boolean);
   function counts(rows,key){
-    const m=new Map(); rows.forEach(r=>{const v=cell(r,key); if(v)m.set(v,(m.get(v)||0)+1);});
+    const m=new Map(); rows.forEach(r=>cellList(r,key).forEach(v=>m.set(v,(m.get(v)||0)+1)));
     return [...m.entries()].sort((a,b)=>b[1]-a[1]);
   }
   /** นับ "จำนวนคน" ที่ตอบค่านั้นอย่างน้อย 1 ช่วงพัก แยกเป็นตอนนี้/อยากได้ */
@@ -988,8 +1030,8 @@ const DASH = (() => {
     rows.forEach(r=>{
       const a=new Set(), b=new Set();
       PERIODS.forEach(p=>{
-        const x=cell(r,`now_${p.k}_${field}`);  if(x) a.add(x);
-        const y=cell(r,`want_${p.k}_${field}`); if(y) b.add(y);
+        cellList(r,`now_${p.k}_${field}`).forEach(x=>a.add(x));
+        cellList(r,`want_${p.k}_${field}`).forEach(y=>b.add(y));
       });
       a.forEach(v=>get(v).now++); b.forEach(v=>get(v).want++);
     });
@@ -1035,9 +1077,9 @@ const DASH = (() => {
   /** สัดส่วน % จากคำตอบทั้งหมดในฟิลด์นั้น (รวมทุกช่วงพัก) รวมกันได้ 100% */
   function shareList(rows,phase,field){
     const m=new Map(); let tot=0;
-    PERIODS.forEach(p=>rows.forEach(r=>{
-      const v=cell(r,`${phase}_${p.k}_${field}`); if(v){ m.set(v,(m.get(v)||0)+1); tot++; }
-    }));
+    PERIODS.forEach(p=>rows.forEach(r=>cellList(r,`${phase}_${p.k}_${field}`).forEach(v=>{
+      m.set(v,(m.get(v)||0)+1); tot++;
+    })));
     return {tot, list:[...m.entries()].map(([v,c])=>({v,c,pct:tot?Math.round(c/tot*100):0}))
       .sort((a,b)=>b.c-a.c)};
   }
@@ -1058,7 +1100,7 @@ const DASH = (() => {
     const want=shareList(rows,'want',field), now=shareList(rows,'now',field);
     const opts=want.list.map(x=>x.v);
     if(!opts.length) return `<p class="desc">${L('ยังไม่มีข้อมูล','No data')}</p>`;
-    const cnt=(p,phase,v)=>rows.filter(r=>cell(r,`${phase}_${p.k}_${field}`)===v).length;
+    const cnt=(p,phase,v)=>rows.filter(r=>cellList(r,`${phase}_${p.k}_${field}`).includes(v)).length;
     const body=PERIODS.map(p=>`<tr><th class="rowh">${p[lang]}</th>${opts.map(v=>{
       const w=cnt(p,'want',v), a=cnt(p,'now',v);
       const hot=w>0 && w===Math.max(...opts.map(o=>cnt(p,'want',o)));
