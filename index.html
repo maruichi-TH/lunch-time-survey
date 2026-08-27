@@ -573,8 +573,6 @@ const ACTIVITIES = [ACT_EAT,
   OTHER
 ];
 const EAT = T('รับประทาน','Eat'), NO_EAT = T('ไม่รับประทาน','Do not eat');
-const OT_YES = T('ทำ','Yes'), OT_NO = T('ไม่ทำ','No');
-const Q_OT = T('คุณทำงานล่วงเวลา (OT) หรือไม่','Do you work overtime (OT)?');
 
 const INTRO_P1   = T('กรุณากรอกข้อมูลผู้ตอบแบบสำรวจ','Enter the status of the survey respondent');
 const INTRO_NOW  = T('กรุณากรอกว่าปัจจุบันคุณใช้เวลาพักกลางวันและช่วงพักอื่น ๆ อย่างไร','Enter how do you currently use your lunch breaks and other breaks?');
@@ -592,12 +590,12 @@ const PARTS = [
   {n:2, key:'now_afterlunch', noOutside:true,  kind:'rest', future:false, noEatAct:true, title:T('พักกลางวัน: ช่วงหลังรับประทานอาหาร','Lunch Break: The Period after Lunch')},
   {n:3, key:'now_morning', noOutside:true,     kind:'rest', future:false, title:T('พักช่วงเช้า 10:00 น.','Morning Break 10:00 AM')},
   {n:4, key:'now_afternoon', noOutside:true,   kind:'rest', future:false, title:T('พักช่วงบ่าย 15:00 น.','Afternoon Break at 3:00 PM')},
-  {n:5, key:'now_evening', noOutside:true, otGate:true,    kind:'rest', future:false, title:T('พักก่อนเริ่มทำงานล่วงเวลา 17:00–17:20 น.','Evening break before starting overtime work 5:00 PM–5:20 PM')},
+  {n:5, key:'now_evening', noOutside:true,     kind:'rest', future:false, title:T('พักก่อนเริ่มทำงานล่วงเวลา 17:00–17:20 น.','Evening break before starting overtime work 5:00 PM–5:20 PM')},
   {n:6, key:'want_meal',       kind:'meal', future:true,  title:T('พักกลางวัน: ช่วงรับประทานอาหาร','Lunch Break: Mealtime')},
   {n:7, key:'want_afterlunch', noOutside:true, kind:'rest', future:true, noEatAct:true, title:T('พักกลางวัน: ช่วงหลังรับประทานอาหาร','Lunch Break: The Period after Lunch')},
   {n:8, key:'want_morning', noOutside:true,    kind:'rest', future:true,  title:T('พักช่วงเช้า 10:00 น.','Morning Break 10:00 AM')},
   {n:9, key:'want_afternoon', noOutside:true,  kind:'rest', future:true,  title:T('พักช่วงบ่าย 15:00 น.','Afternoon Break at 3:00 PM')},
-  {n:10,key:'want_evening', noOutside:true, otGate:true,   kind:'rest', future:true,  title:T('พักก่อนเริ่มทำงานล่วงเวลา 17:00–17:20 น.','Evening break before starting overtime work 5:00 PM–5:20 PM')}
+  {n:10,key:'want_evening', noOutside:true,    kind:'rest', future:true,  title:T('พักก่อนเริ่มทำงานล่วงเวลา 17:00–17:20 น.','Evening break before starting overtime work 5:00 PM–5:20 PM')}
 ];
 
 /* ==========================================================
@@ -657,28 +655,21 @@ function buildPart(part){
                `${p}_condition`,CONDITION);
     h += `</div></div>`;
   } else {
-    // ข้อที่มี otGate จะถามเรื่อง OT ก่อน แล้วเลขข้อที่เหลือเลื่อนไป 1
-    const k = part.otGate ? 1 : 0;
-    if(part.otGate){
-      h += group(`${n}.1`, Q_OT, `${p}_ot`, [OT_YES,OT_NO]);
-      h += `<div id="${p}-otwrap" class="hide">`;
-    }
-    h += group(`${n}.${1+k}`, future?T('คุณต้องการพักกับกี่คน','How many people do you want to take your break with?')
-                                    :T('คุณพักกับกี่คน','How many people do you take your break with?'),
+    h += group(`${n}.1`, future?T('คุณต้องการพักกับกี่คน','How many people do you want to take your break with?')
+                               :T('คุณพักกับกี่คน','How many people do you take your break with?'),
                `${p}_with`,PEOPLE);
-    h += whereBlock(p,`${n}.${2+k}`,kind,future,part.noOutside);
+    h += whereBlock(p,`${n}.2`,kind,future,part.noOutside);
     h += `<div id="${p}-after">`;
-    h += group(`${n}.${3+k}`, future?T('คุณต้องการทำอะไรในช่วงพัก','What do you want to do?')
-                                    :T('คุณทำอะไรในช่วงพัก','What do you do?'),
+    h += group(`${n}.3`, future?T('คุณต้องการทำอะไรในช่วงพัก','What do you want to do?')
+                               :T('คุณทำอะไรในช่วงพัก','What do you do?'),
                `${p}_activities`, noEatAct?ACTIVITIES.filter(x=>x.v!==ACT_EAT.v):ACTIVITIES, true);
-    h += group(`${n}.${4+k}`, future?T('คุณต้องการพักในพื้นที่ลักษณะใด','What is the type of place where you want to take a break?')
-                                    :T('คุณพักในพื้นที่ลักษณะใด','What is the type of place where you take a break?'),
+    h += group(`${n}.4`, future?T('คุณต้องการพักในพื้นที่ลักษณะใด','What is the type of place where you want to take a break?')
+                               :T('คุณพักในพื้นที่ลักษณะใด','What is the type of place where you take a break?'),
                `${p}_place_type`,PLACE_TYPE);
-    h += group(`${n}.${5+k}`, future?T('คุณต้องการพักในสภาพแวดล้อมแบบใด','What is the type of condition where you want to take a break?')
-                                    :T('คุณพักในสภาพแวดล้อมแบบใด','What is the type of condition where you take a break?'),
+    h += group(`${n}.5`, future?T('คุณต้องการพักในสภาพแวดล้อมแบบใด','What is the type of condition where you want to take a break?')
+                               :T('คุณพักในสภาพแวดล้อมแบบใด','What is the type of condition where you take a break?'),
                `${p}_condition`,CONDITION);
     h += `</div>`;
-    if(part.otGate) h += `</div>`;
   }
   return h;
 }
@@ -791,11 +782,6 @@ function syncAll(){
       document.getElementById(`${part.key}-followup`).classList.toggle('hide',!on);
       if(!on) return;
     }
-    if(part.otGate){
-      const on = picked(`${part.key}_ot`)===OT_YES.v;
-      document.getElementById(`${part.key}-otwrap`).classList.toggle('hide',!on);
-      if(!on) return;
-    }
     syncWhere(part);
   });
   [...new Set([...form.querySelectorAll('input[type=radio],input[type=checkbox]')].map(x=>x.name))].forEach(syncOther);
@@ -870,7 +856,6 @@ function buildRow(){
   PARTS.forEach(part=>{
     const p = part.key;
     if(part.kind==='meal') row[`${p}_eat`] = picked(`${p}_eat`);
-    if(part.otGate)         row[`${p}_ot`]  = picked(`${p}_ot`);
     row[`${p}_with`]         = picked(`${p}_with`);
     row[`${p}_where`]        = picked(`${p}_where`);
     row[`${p}_where_detail`] = withOther(`${p}_where_detail`);
@@ -1309,10 +1294,6 @@ const DASH = (() => {
       if(p.k==='meal'){
         push(`[${L('ปัจจุบัน','Current')}] ${p[lang]} — ${L('กินข้าวกลางวันไหม','Eats lunch')}`,'now_meal_eat');
         push(`[${L('ความต้องการ','Desired')}] ${p[lang]} — ${L('กินข้าวกลางวันไหม','Eats lunch')}`,'want_meal_eat');
-      }
-      if(p.k==='evening'){
-        push(`[${L('ปัจจุบัน','Current')}] ${p[lang]} — ${L('ทำ OT หรือไม่','Works overtime')}`,'now_evening_ot');
-        push(`[${L('ความต้องการ','Desired')}] ${p[lang]} — ${L('ทำ OT หรือไม่','Works overtime')}`,'want_evening_ot');
       }
       FIELDS.forEach(f=>{
         push(`[${L('ปัจจุบัน','Current')}] ${p[lang]} — ${f[lang]}`,`now_${p.k}_${f.k}`);
