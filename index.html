@@ -149,6 +149,17 @@ input[type=text]::placeholder{color:#a9bbc9}
 input[type=text]:hover{border-color:var(--brand-300)}
 input[type=text]:focus{outline:none;border-color:var(--brand);background:#fff;box-shadow:0 0 0 4px var(--brand-100)}
 input[type=text].warn{border-color:var(--warn);background:#fffafa}
+
+/* ข้อที่ยังไม่ได้ตอบ */
+.q.miss{background:#fff6f5;border:1.5px solid #f3bdb6;border-radius:var(--r-md);
+  padding:14px 16px 16px;margin-left:-16px;margin-right:-16px;animation:shake .4s ease}
+.q.miss .q-no{background:var(--warn);color:#fff;border-color:var(--warn)}
+.q.miss .q-text{color:#93312a}
+.q.miss .opt{border-color:#f0c4be}
+.miss-tag{display:block;margin-top:8px;color:var(--warn);font-size:.79rem;font-weight:700}
+.miss-tag .en{color:#c07d75;font-weight:400;font-size:.72rem}
+@keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-6px)}
+  40%{transform:translateX(6px)}60%{transform:translateX(-4px)}80%{transform:translateX(4px)}}
 .branch{margin-left:47px;margin-top:16px;padding-left:18px;border-left:2px dashed var(--brand-100)}
 .branch .opts,.branch .field{padding-left:0}
 .branch .q{margin-top:2px}
@@ -590,12 +601,12 @@ const PARTS = [
   {n:2, key:'now_afterlunch', noOutside:true,  kind:'rest', future:false, noEatAct:true, title:T('พักกลางวัน: ช่วงหลังรับประทานอาหาร','Lunch Break: The Period after Lunch')},
   {n:3, key:'now_morning', noOutside:true,     kind:'rest', future:false, title:T('พักช่วงเช้า 10:00 น.','Morning Break 10:00 AM')},
   {n:4, key:'now_afternoon', noOutside:true,   kind:'rest', future:false, title:T('พักช่วงบ่าย 15:00 น.','Afternoon Break at 3:00 PM')},
-  {n:5, key:'now_evening', noOutside:true,     kind:'rest', future:false, title:T('พักก่อนเริ่มทำงานล่วงเวลา 17:00–17:20 น.','Evening break before starting overtime work 5:00 PM–5:20 PM')},
+  {n:5, key:'now_evening', noOutside:true,    kind:'rest', future:false, title:T('พักก่อนเริ่มทำงานล่วงเวลา 17:00–17:20 น.','Evening break before starting overtime work 5:00 PM–5:20 PM')},
   {n:6, key:'want_meal',       kind:'meal', future:true,  title:T('พักกลางวัน: ช่วงรับประทานอาหาร','Lunch Break: Mealtime')},
   {n:7, key:'want_afterlunch', noOutside:true, kind:'rest', future:true, noEatAct:true, title:T('พักกลางวัน: ช่วงหลังรับประทานอาหาร','Lunch Break: The Period after Lunch')},
   {n:8, key:'want_morning', noOutside:true,    kind:'rest', future:true,  title:T('พักช่วงเช้า 10:00 น.','Morning Break 10:00 AM')},
   {n:9, key:'want_afternoon', noOutside:true,  kind:'rest', future:true,  title:T('พักช่วงบ่าย 15:00 น.','Afternoon Break at 3:00 PM')},
-  {n:10,key:'want_evening', noOutside:true,    kind:'rest', future:true,  title:T('พักก่อนเริ่มทำงานล่วงเวลา 17:00–17:20 น.','Evening break before starting overtime work 5:00 PM–5:20 PM')}
+  {n:10,key:'want_evening', noOutside:true,   kind:'rest', future:true,  title:T('พักก่อนเริ่มทำงานล่วงเวลา 17:00–17:20 น.','Evening break before starting overtime work 5:00 PM–5:20 PM')}
 ];
 
 /* ==========================================================
@@ -656,18 +667,18 @@ function buildPart(part){
     h += `</div></div>`;
   } else {
     h += group(`${n}.1`, future?T('คุณต้องการพักกับกี่คน','How many people do you want to take your break with?')
-                               :T('คุณพักกับกี่คน','How many people do you take your break with?'),
+                                    :T('คุณพักกับกี่คน','How many people do you take your break with?'),
                `${p}_with`,PEOPLE);
     h += whereBlock(p,`${n}.2`,kind,future,part.noOutside);
     h += `<div id="${p}-after">`;
     h += group(`${n}.3`, future?T('คุณต้องการทำอะไรในช่วงพัก','What do you want to do?')
-                               :T('คุณทำอะไรในช่วงพัก','What do you do?'),
+                                    :T('คุณทำอะไรในช่วงพัก','What do you do?'),
                `${p}_activities`, noEatAct?ACTIVITIES.filter(x=>x.v!==ACT_EAT.v):ACTIVITIES, true);
     h += group(`${n}.4`, future?T('คุณต้องการพักในพื้นที่ลักษณะใด','What is the type of place where you want to take a break?')
-                               :T('คุณพักในพื้นที่ลักษณะใด','What is the type of place where you take a break?'),
+                                    :T('คุณพักในพื้นที่ลักษณะใด','What is the type of place where you take a break?'),
                `${p}_place_type`,PLACE_TYPE);
     h += group(`${n}.5`, future?T('คุณต้องการพักในสภาพแวดล้อมแบบใด','What is the type of condition where you want to take a break?')
-                               :T('คุณพักในสภาพแวดล้อมแบบใด','What is the type of condition where you take a break?'),
+                                    :T('คุณพักในสภาพแวดล้อมแบบใด','What is the type of condition where you take a break?'),
                `${p}_condition`,CONDITION);
     h += `</div>`;
   }
@@ -786,7 +797,7 @@ function syncAll(){
   });
   [...new Set([...form.querySelectorAll('input[type=radio],input[type=checkbox]')].map(x=>x.name))].forEach(syncOther);
 }
-form.addEventListener('change',()=>{ syncAll(); hideErr(); });
+form.addEventListener('change',()=>{ syncAll(); hideErr(); clearMiss(); });
 
 /* ==========================================================
    nav + validate
@@ -796,22 +807,62 @@ const hideErr = ()=> errBox.classList.add('hide');
 const showErr = o=>{ errBox.innerHTML = `<div>${o.h}</div>`; errBox.classList.remove('hide');
   errBox.scrollIntoView({block:'nearest',behavior:'smooth'}); };
 
+/* ล้างไฮไลต์ข้อที่เคยเตือนไว้ */
+function clearMiss(){
+  form.querySelectorAll('.q.miss').forEach(el=>el.classList.remove('miss'));
+  form.querySelectorAll('.miss-tag').forEach(el=>el.remove());
+  form.querySelectorAll('input.warn').forEach(el=>el.classList.remove('warn'));
+}
+/* ทำเครื่องหมายข้อที่ยังไม่ตอบ แล้วเลื่อนจอไปหา */
+function markMiss(el,msg){
+  const box = el.closest('.q') || el.closest('.field') || el;
+  box.classList.add('miss');
+  if(!box.querySelector('.miss-tag')){
+    const tag=document.createElement('span');
+    tag.className='miss-tag';
+    tag.innerHTML=msg.h;
+    (box.querySelector('.q-text')||box).appendChild(tag);
+  }
+  setTimeout(()=>{
+    box.scrollIntoView({block:'center',behavior:'smooth'});
+    const first=box.querySelector('input');
+    if(first && first.type==='text') first.focus({preventScroll:true});
+  },30);
+}
+
 function validate(p){
+  clearMiss();
   const inputs = [...pages[p-1].querySelectorAll('input')].filter(shown);
+  const MSG_PICK  = T('ยังไม่ได้ตอบข้อนี้','Not answered yet');
+  const MSG_MULTI = T('ยังไม่ได้ตอบข้อนี้ (เลือกได้มากกว่า 1 ข้อ)','Not answered yet');
+  const MSG_TEXT  = T('ยังไม่ได้กรอกข้อนี้','Not filled in yet');
+
   if(p===1){
-    if(!val('full_name')){ showErr(T('กรุณากรอกชื่อ-นามสกุล','Please enter your name.')); document.getElementById('fn').focus(); return false; }
+    const fn=document.getElementById('fn');
+    if(!val('full_name')){
+      fn.classList.add('warn');
+      showErr(T('ยังกรอกไม่ครบ กรุณากรอกชื่อ-นามสกุล','Incomplete — please enter your name.'));
+      markMiss(fn,MSG_TEXT); return false;
+    }
     if(!/^\d+$/.test(val('employee_id'))){
+      eid.classList.add('warn');
       showErr(T('รหัสพนักงานต้องเป็นตัวเลขเท่านั้น','Employee ID must contain numbers only.'));
-      eid.classList.add('err'); eid.focus(); return false;
+      markMiss(eid,T('กรอกเป็นตัวเลขเท่านั้น','Numbers only')); return false;
     }
   }
   for(const x of inputs) if(x.type==='text' && x.required && !x.value.trim()){
-    showErr(T('กรุณากรอกรายละเอียดที่จำเป็นก่อนดำเนินการต่อ','Please fill in the required details before continuing.'));
-    x.focus(); return false; }
+    x.classList.add('warn');
+    showErr(T('ยังกรอกไม่ครบ ระบบได้เลื่อนไปยังข้อที่ยังไม่ได้ตอบแล้ว','Incomplete — jumped to the unanswered question.'));
+    markMiss(x,MSG_TEXT); return false;
+  }
   for(const n of new Set(inputs.filter(x=>x.type==='radio').map(x=>x.name))) if(!picked(n)){
-    showErr(T('กรุณาเลือกคำตอบ 1 ข้อก่อนดำเนินการต่อ','Please select one answer before continuing.')); return false; }
+    showErr(T('ยังตอบไม่ครบ ระบบได้เลื่อนไปยังข้อที่ยังไม่ได้ตอบแล้ว','Incomplete — jumped to the unanswered question.'));
+    markMiss(form.querySelector(`[name="${n}"]`),MSG_PICK); return false;
+  }
   for(const n of new Set(inputs.filter(x=>x.type==='checkbox').map(x=>x.name))) if(!pickedAll(n).length){
-    showErr(T('กรุณาเลือกอย่างน้อย 1 ข้อก่อนดำเนินการต่อ','Please select at least one option before continuing.')); return false; }
+    showErr(T('ยังตอบไม่ครบ ระบบได้เลื่อนไปยังข้อที่ยังไม่ได้ตอบแล้ว','Incomplete — jumped to the unanswered question.'));
+    markMiss(form.querySelector(`[name="${n}"]`),MSG_MULTI); return false;
+  }
   return true;
 }
 function render(p){
@@ -830,7 +881,7 @@ function render(p){
   document.getElementById('prev').classList.toggle('invis',page===1);
   document.getElementById('next').classList.toggle('hide',page===TOTAL);
   document.getElementById('send').classList.toggle('hide',page!==TOTAL);
-  hideErr();
+  hideErr(); clearMiss();
   window.scrollTo({top:0,behavior:'smooth'});
 }
 document.getElementById('next').onclick = ()=>{ if(validate(page)) render(page+1); };
